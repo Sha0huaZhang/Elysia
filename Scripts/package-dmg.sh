@@ -79,10 +79,26 @@ fi
 codesign --verify --strict --verbose=2 "$APP"
 codesign -dv --verbose=2 "$APP" 2>&1 | grep -E 'Authority|TeamIdentifier'
 
+# ---------------------------------------------------------------- layout
+
+# Geometry of the disk image window, in points.
+WINDOW_WIDTH=460
+WINDOW_HEIGHT=349
+ICON_SIZE=128                            # 4x the area of the 64pt Finder default
+TEXT_SIZE=13
+ICON_TOP=52
+# Two icons centred as a pair: their centres sit at 1/4 and 3/4 of the width.
+ICON_LEFT=$((WINDOW_WIDTH / 4 - ICON_SIZE / 2))
+ICON_RIGHT=$((WINDOW_WIDTH * 3 / 4 - ICON_SIZE / 2))
+# No background picture: drag-to-install needs no caption, and without a picture
+# Finder lets the window follow the system appearance, so it turns dark in dark
+# mode. A picture would pin the window to one colour instead.
+
 # ---------------------------------------------------------------- stage
 
 STAGE="$(mktemp -d)"
-trap 'rm -rf "$STAGE"' EXIT
+TMP_DMG="$(mktemp -u).dmg"
+trap 'rm -rf "$STAGE"; rm -f "$TMP_DMG"' EXIT
 
 cp -R "$APP" "$STAGE/"
 ln -s /Applications "$STAGE/Applications"
@@ -93,7 +109,43 @@ mkdir -p "$OUT_DIR"
 DMG="$OUT_DIR/$APP_NAME-$VERSION.dmg"
 rm -f "$DMG"
 
-echo "==> creating $DMG"
-hdiutil create -volname "$APP_NAME" -srcfolder "$STAGE" -ov -format UDZO "$DMG" >/dev/null
+# A read-write image is needed first: Finder records the window layout in
+# .DS_Store, which cannot be written to a compressed image.
+echo "==> laying out the disk image window"
+hdiutil create -volname "$APP_NAME" -srcfolder "$STAGE" -ov -format UDRW "$TMP_DMG" >/dev/null
+
+MOUNT_POINT="$(hdiutil attach "$TMP_DMG" -nobrowse -noautoopen | grep -o '/Volumes/.*' | tail -1)"
+[[ -n "$MOUNT_POINT" ]] || { echo "error: could not mount the working image" >&2; exit 1; }
+echo "    mounted at $MOUNT_POINT"
+
+osascript <<APPLESCRIPT
+tell application "Finder"
+  tell disk "$APP_NAME"
+    open
+    delay 1
+    set current view of container window to icon view
+    set theViewOptions to icon view options of container window
+    set arrangement of theViewOptions to not arranged
+    set icon size of theViewOptions to $ICON_SIZE
+    set text size of theViewOptions to $TEXT_SIZE
+    set shows icon preview of theViewOptions to true
+    set toolbar visible of container window to false
+    set statusbar visible of container window to false
+    set bounds of container window to {200, 160, $((200 + WINDOW_WIDTH)), $((160 + WINDOW_HEIGHT))}
+    set position of item "$APP_NAME.app" of container window to {$ICON_LEFT, $ICON_TOP}
+    set position of item "Applications" of container window to {$ICON_RIGHT, $ICON_TOP}
+    update without registering applications
+    delay 2
+    close
+  end tell
+end tell
+APPLESCRIPT
+
+sync
+sleep 2
+hdiutil detach "$MOUNT_POINT" >/dev/null
+
+echo "==> compressing"
+hdiutil convert "$TMP_DMG" -format UDZO -o "$DMG" >/dev/null
 
 echo "==> $DMG ($(du -h "$DMG" | cut -f1))"
