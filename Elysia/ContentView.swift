@@ -14,6 +14,10 @@ struct ContentView: View {
     @State private var librarySongs: [Song] = []
     /// 当前是否使用用户自定义排序
     @State private var isCustomOrder = false
+    /// 是否正在重新读取资料库
+    @State private var isRefreshing = false
+    /// 上次从 Apple Music 读取资料库的时间
+    @State private var lastRefreshed: Date? = nil
 
     private let orderStore = SongOrderStore()
 
@@ -45,7 +49,7 @@ struct ContentView: View {
         .frame(minWidth: 800, minHeight: 600)
         .task {
             MusicData.forceRepeatOff()
-            await initialLoad()
+            await loadSongs()
             let v = await MusicData.fetchVolume()
             await MainActor.run { self.volume = v }
             await startPolling()
@@ -59,7 +63,10 @@ struct ContentView: View {
             SettingsView(
                 songCount: songs.count,
                 isCustomOrder: isCustomOrder,
-                onResetOrder: resetOrder
+                isRefreshing: isRefreshing,
+                lastRefreshed: lastRefreshed,
+                onResetOrder: resetOrder,
+                onRefresh: refreshLibrary
             )
         } else if selectedItem == "歌曲" || selectedItem == nil {
             playerView
@@ -109,7 +116,8 @@ struct ContentView: View {
         }
     }
 
-    private func initialLoad() async {
+    /// 从 Apple Music 读取资料库，并套用已保存的顺序
+    private func loadSongs() async {
         let fetched = await Task.detached(priority: .userInitiated) {
             MusicData.fetchAllSongs()
         }.value
@@ -118,7 +126,16 @@ struct ContentView: View {
             self.songs = orderStore.apply(to: fetched)
             self.isCustomOrder = orderStore.isCustomized
             self.isLoading = false
+            self.isRefreshing = false
+            self.lastRefreshed = Date()
         }
+    }
+
+    /// 重新读取资料库，用于用户在 Apple Music 中增删歌曲之后
+    private func refreshLibrary() {
+        guard !isRefreshing, !isLoading else { return }
+        isRefreshing = true
+        Task { await loadSongs() }
     }
 
     private func startPolling() async {
@@ -522,19 +539,47 @@ struct SongRowView: View {
 struct SettingsView: View {
     let songCount: Int
     let isCustomOrder: Bool
+    let isRefreshing: Bool
+    let lastRefreshed: Date?
     let onResetOrder: () -> Void
+    let onRefresh: () -> Void
 
     @State private var isConfirmingReset = false
 
     var body: some View {
         Form {
+            Section("曲库") {
+                LabeledContent("歌曲数量") {
+                    Text("\(songCount)")
+                        .foregroundStyle(.secondary)
+                }
+                LabeledContent("上次读取") {
+                    Text(lastRefreshedText)
+                        .foregroundStyle(.secondary)
+                }
+                Text("在 Apple Music 中新增或删除歌曲后，点按「刷新歌单」重新读取资料库。自定义排序会保留，新歌会追加到末尾。")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: 8) {
+                    Button("刷新歌单", action: onRefresh)
+                        .keyboardShortcut("r", modifiers: .command)
+                        .disabled(isRefreshing)
+
+                    if isRefreshing {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("正在读取…")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+
             Section("歌曲排序") {
                 LabeledContent("当前排序") {
                     Text(isCustomOrder ? "自定义排序" : "默认排序")
-                        .foregroundStyle(.secondary)
-                }
-                LabeledContent("歌曲数量") {
-                    Text("\(songCount)")
                         .foregroundStyle(.secondary)
                 }
                 Text("在「歌曲」列表中拖动任意歌曲即可调整顺序，新的顺序会自动保存。")
@@ -556,6 +601,11 @@ struct SettingsView: View {
         } message: {
             Text("歌曲将恢复为 Apple Music 资料库中的原始顺序。")
         }
+    }
+
+    private var lastRefreshedText: String {
+        guard let lastRefreshed else { return "尚未读取" }
+        return lastRefreshed.formatted(date: .omitted, time: .shortened)
     }
 }
 
