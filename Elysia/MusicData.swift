@@ -15,6 +15,34 @@ struct PlayerStatus {
     let isStopped: Bool
     let position: Double
     let duration: Double
+    /// 当前曲目名（没有曲目时为 nil）
+    let title: String?
+    /// 当前曲目歌手
+    let artist: String?
+
+    static let idle = PlayerStatus(
+        persistentID: nil, isPlaying: false, isStopped: true,
+        position: 0, duration: 0, title: nil, artist: nil
+    )
+
+    /// 解析状态脚本的 "|||" 分隔输出。
+    ///
+    /// 字段顺序：persistentID、播放状态、进度、时长、曲名、歌手。
+    /// 输出不符合预期时退回 `idle`，让界面显示为「未在播放」而不是崩溃。
+    static func parse(_ output: String) -> PlayerStatus {
+        let parts = output.components(separatedBy: "|||")
+        guard parts.count == 6 else { return .idle }
+
+        return PlayerStatus(
+            persistentID: parts[0].isEmpty ? nil : parts[0],
+            isPlaying: parts[1] == "playing",
+            isStopped: parts[1] == "stopped",
+            position: Double(parts[2]) ?? 0,
+            duration: Double(parts[3]) ?? 0,
+            title: parts[4].isEmpty ? nil : parts[4],
+            artist: parts[5].isEmpty ? nil : parts[5]
+        )
+    }
 }
 
 // MARK: - 播放模式
@@ -69,34 +97,22 @@ enum MusicData {
                 set currentID to persistent ID of current track
                 set pos to player position
                 set dur to duration of current track
+                set trackName to name of current track
+                set trackArtist to artist of current track
             on error
                 set currentID to ""
                 set pos to 0
                 set dur to 0
+                set trackName to ""
+                set trackArtist to ""
             end try
             set stateStr to (player state as string)
-            return currentID & "|||" & stateStr & "|||" & pos & "|||" & dur
+            return currentID & "|||" & stateStr & "|||" & pos & "|||" & dur & "|||" & trackName & "|||" & trackArtist
         end tell
         """
 
         let result = runAppleScriptSync(script)
-        let parts = result.components(separatedBy: "|||")
-        guard parts.count == 4 else {
-            return PlayerStatus(persistentID: nil, isPlaying: false, isStopped: true, position: 0, duration: 0)
-        }
-
-        let pid = parts[0].isEmpty ? nil : parts[0]
-        let state = parts[1]
-        let position = Double(parts[2]) ?? 0
-        let duration = Double(parts[3]) ?? 0
-
-        return PlayerStatus(
-            persistentID: pid,
-            isPlaying: state == "playing",
-            isStopped: state == "stopped",
-            position: position,
-            duration: duration
-        )
+        return PlayerStatus.parse(result)
     }
 
     /// 播放指定 persistent ID 的歌曲（异步）
@@ -177,6 +193,11 @@ enum MusicData {
     }
 
     /// 获取封面（异步）
+    ///
+    /// 标注 `@MainActor`：调用方都是界面侧（SwiftUI 的 `.task`），
+    /// 而 `NSImage` 不是 Sendable，这样能明确表达封面的交付线程。
+    /// 实际读取仍发生在 `scriptQueue` 上，不会阻塞界面。
+    @MainActor
     static func fetchArtwork(persistentID: String) async -> NSImage? {
         return await withCheckedContinuation { continuation in
             scriptQueue.async {
