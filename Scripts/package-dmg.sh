@@ -118,7 +118,12 @@ MOUNT_POINT="$(hdiutil attach "$TMP_DMG" -nobrowse -noautoopen | grep -o '/Volum
 [[ -n "$MOUNT_POINT" ]] || { echo "error: could not mount the working image" >&2; exit 1; }
 echo "    mounted at $MOUNT_POINT"
 
-osascript <<APPLESCRIPT
+# Finder records the layout in .DS_Store on its own schedule, so the result is
+# checked rather than assumed: an earlier version waited a fixed two seconds and
+# sometimes produced an image with no layout at all.
+layout_attempts=5
+for (( attempt = 1; attempt <= layout_attempts; attempt++ )); do
+    osascript <<APPLESCRIPT >/dev/null
 tell application "Finder"
   tell disk "$APP_NAME"
     open
@@ -141,7 +146,18 @@ tell application "Finder"
 end tell
 APPLESCRIPT
 
-sync
+    sync
+    if [[ -s "$MOUNT_POINT/.DS_Store" ]]; then
+        break
+    fi
+    if (( attempt == layout_attempts )); then
+        echo "error: Finder did not record the window layout after $layout_attempts attempts" >&2
+        hdiutil detach "$MOUNT_POINT" >/dev/null 2>&1 || true
+        exit 1
+    fi
+    echo "    Finder has not written .DS_Store yet, retrying ($attempt/$layout_attempts)"
+done
+
 sleep 2
 hdiutil detach "$MOUNT_POINT" >/dev/null
 
