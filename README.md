@@ -1,10 +1,19 @@
 # Elysia
 The missing graphical interface of Apple Music.
 
+**English** · [简体中文](./README.zh-Hans.md)
+
 ## Requirements
 
 - macOS 13 or later
 - Apple Music with a library (Elysia drives the Music app, it does not play audio itself)
+
+## Languages
+
+The interface ships in English and Simplified Chinese, as two independent
+packs in `Elysia/en.lproj` and `Elysia/zh-Hans.lproj`. By default it follows the
+system language; **Settings → Language** overrides it, which takes effect after
+a restart.
 
 ## Install
 
