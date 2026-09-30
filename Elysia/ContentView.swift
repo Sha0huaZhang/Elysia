@@ -12,6 +12,8 @@ struct ContentView: View {
     @State private var isLoading = true
     @State private var repeatMode: RepeatMode = .off
     @State private var selectedItem: String? = "歌曲"
+    /// 侧边栏搜索框的文字
+    @State private var searchText = ""
 
     /// Apple Music 资料库的原始顺序，用于恢复默认排序
     @State private var librarySongs: [Song] = []
@@ -45,7 +47,7 @@ struct ContentView: View {
 
     var body: some View {
         NavigationSplitView {
-            SidebarView(selection: $selectedItem)
+            SidebarView(selection: $selectedItem, searchText: $searchText)
         } detail: {
             detailView
         }
@@ -110,10 +112,13 @@ struct ContentView: View {
             )
             Divider()
             SongListView(
-                songs: $songs,
+                songs: visibleSongs,
                 isLoading: isLoading,
                 nowPlayingID: nowPlayingID,
                 isPlaying: isPlaying,
+                // 搜索结果只是原列表的视图，拖动会打乱真实顺序，因此搜索时禁用
+                isReorderEnabled: !isSearching,
+                isSearching: isSearching,
                 onReorder: persistOrder
             )
         }
@@ -285,8 +290,17 @@ struct ContentView: View {
         MusicData.togglePlayPause()
     }
 
+    /// 当前是否在搜索
+    private var isSearching: Bool { SongSearch.isActive(searchText) }
+
+    /// 列表实际显示的歌曲：搜索时是匹配结果，否则是完整列表
+    private var visibleSongs: [Song] {
+        SongSearch.filter(songs, query: searchText)
+    }
+
     /// 拖动排序后保存新的顺序
     private func persistOrder(_ ordered: [Song]) {
+        songs = ordered
         orderStore.save(ordered)
         isCustomOrder = true
     }
@@ -302,19 +316,55 @@ struct ContentView: View {
 // MARK: - 侧边栏
 struct SidebarView: View {
     @Binding var selection: String?
+    @Binding var searchText: String
 
     var body: some View {
-        List(selection: $selection) {
-            Section {
-                Label("设置", systemImage: "gearshape").tag("设置")
-                Label("歌曲", systemImage: "music.note").tag("歌曲")
-                Label("歌单", systemImage: "music.note.list").tag("歌单")
-                Label("专辑", systemImage: "square.stack").tag("专辑")
-                Label("开始", systemImage: "play.circle").tag("开始")
+        VStack(spacing: 0) {
+            searchField
+            List(selection: $selection) {
+                Section {
+                    Label("设置", systemImage: "gearshape").tag("设置")
+                    Label("歌曲", systemImage: "music.note").tag("歌曲")
+                    Label("歌单", systemImage: "music.note.list").tag("歌单")
+                    Label("专辑", systemImage: "square.stack").tag("专辑")
+                    Label("开始", systemImage: "play.circle").tag("开始")
+                }
+            }
+            .listStyle(.sidebar)
+        }
+        .navigationSplitViewColumnWidth(min: 150, ideal: 180, max: 220)
+    }
+
+    /// 列表上方的搜索框
+    private var searchField: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+
+            TextField("搜索歌曲", text: $searchText)
+                .textFieldStyle(.plain)
+                .font(.system(size: 12))
+                .onExitCommand { searchText = "" }
+
+            if !searchText.isEmpty {
+                Button {
+                    searchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("清除搜索")
             }
         }
-        .listStyle(.sidebar)
-        .navigationSplitViewColumnWidth(min: 150, ideal: 180, max: 220)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
+        .padding(.horizontal, 8)
+        .padding(.top, 8)
+        .padding(.bottom, 4)
     }
 }
 
@@ -534,10 +584,12 @@ struct NowPlayingInline: View {
 
 // MARK: - 歌曲列表
 struct SongListView: View {
-    @Binding var songs: [Song]
+    let songs: [Song]
     let isLoading: Bool
     let nowPlayingID: String?
     let isPlaying: Bool
+    let isReorderEnabled: Bool
+    let isSearching: Bool
     let onReorder: ([Song]) -> Void
 
     /// 正在拖动的歌曲 ID
@@ -556,6 +608,16 @@ struct SongListView: View {
             if isLoading {
                 ProgressView("正在从 Apple Music 获取歌曲...")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if songs.isEmpty, isSearching {
+                VStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.largeTitle)
+                        .foregroundColor(.secondary)
+                    Text("没有找到匹配的歌曲").foregroundColor(.secondary)
+                    Text("换个关键词试试")
+                        .font(.caption).foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if songs.isEmpty {
                 VStack(spacing: 8) {
                     Image(systemName: "music.note.list")
@@ -581,6 +643,7 @@ struct SongListView: View {
                             song: song,
                             isPlaying: song.id == nowPlayingID && isPlaying,
                             isDragging: draggingID == song.id,
+                            isReorderEnabled: isReorderEnabled,
                             onDragChanged: { pointerY, startY, artwork in
                                 if draggingID != song.id {
                                     draggingID = song.id
@@ -641,9 +704,8 @@ struct SongListView: View {
         guard reordered != songs else { return }
 
         withAnimation(.easeInOut(duration: 0.15)) {
-            songs = reordered
+            onReorder(reordered)
         }
-        onReorder(songs)
     }
 }
 
@@ -698,6 +760,7 @@ struct SongRowView: View {
     let song: Song
     let isPlaying: Bool
     let isDragging: Bool
+    let isReorderEnabled: Bool
     let onDragChanged: (CGFloat, CGFloat, NSImage?) -> Void
     let onDragEnded: (CGFloat, CGFloat) -> Void
 
@@ -769,6 +832,7 @@ struct SongRowView: View {
             MusicData.playSong(persistentID: song.id)
         }
         // 用 simultaneousGesture 让拖动与双击播放共存，互不抢占
+        // 搜索时用 including: .none 关掉拖动，双击播放仍然保留
         .simultaneousGesture(
             DragGesture(minimumDistance: 4, coordinateSpace: .global)
                 .onChanged { value in
@@ -776,7 +840,8 @@ struct SongRowView: View {
                 }
                 .onEnded { value in
                     onDragEnded(value.location.y, value.startLocation.y)
-                }
+                },
+            including: isReorderEnabled ? .all : .none
         )
     }
 
