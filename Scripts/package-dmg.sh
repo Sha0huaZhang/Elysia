@@ -66,7 +66,16 @@ echo "==> architectures: $(lipo -archs "$APP/Contents/MacOS/$APP_NAME")"
 # ---------------------------------------------------------------- sign
 
 echo "==> signing"
-codesign --force --sign "$SIGN_IDENTITY" --timestamp "$APP"
+if [[ "$SIGN_IDENTITY" == "-" ]]; then
+    codesign --force --sign - "$APP"
+elif codesign --force --sign "$SIGN_IDENTITY" --timestamp "$APP" 2>/dev/null; then
+    :
+else
+    # The timestamp service lives on the network; fall back so packaging still
+    # works offline. The signature stays valid, it just carries no secure timestamp.
+    echo "warning: timestamp service unavailable, signing without a secure timestamp" >&2
+    codesign --force --sign "$SIGN_IDENTITY" "$APP"
+fi
 codesign --verify --strict --verbose=2 "$APP"
 codesign -dv --verbose=2 "$APP" 2>&1 | grep -E 'Authority|TeamIdentifier'
 
