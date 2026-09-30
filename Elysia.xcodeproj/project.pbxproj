@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		0C1E268D1EAB5AD3D9FE5CD0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B645E8EAC09769793F3C71C1 /* Assets.xcassets */; };
 		291BE9367DA5A31563CFAC95 /* SongSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DBF8BDB0BD18BC704604D82 /* SongSearch.swift */; };
+		34C29CA88FB61E30E4F5BAF8 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 56A89D34AD629A2E4D567A8D /* Localizable.strings */; };
 		3AEFE0BA18EDAB3945B0C592 /* SongOrder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CE4BC4FDDF7FD5A622A844D /* SongOrder.swift */; };
 		6AC52737ACC0005FC103DA26 /* MusicData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A30A4F8A4703F1CB9FA1863 /* MusicData.swift */; };
 		7E1E6C0D1E049DB31C89185E /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 424B85B5E4C0CAAFB41C665B /* ContentView.swift */; };
@@ -16,10 +17,12 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		19A96EACC17BD9736A05661B /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		2E21AB5EF498774F87323DA2 /* Elysia.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Elysia.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3A30A4F8A4703F1CB9FA1863 /* MusicData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicData.swift; sourceTree = "<group>"; };
 		424B85B5E4C0CAAFB41C665B /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		6CE4BC4FDDF7FD5A622A844D /* SongOrder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongOrder.swift; sourceTree = "<group>"; };
+		8A5FD21DDB2768015E29A941 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		8DBF8BDB0BD18BC704604D82 /* SongSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongSearch.swift; sourceTree = "<group>"; };
 		A0737928E41B180E0C8404F4 /* ElysiaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElysiaApp.swift; sourceTree = "<group>"; };
 		B645E8EAC09769793F3C71C1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -35,6 +38,7 @@
 				3A30A4F8A4703F1CB9FA1863 /* MusicData.swift */,
 				6CE4BC4FDDF7FD5A622A844D /* SongOrder.swift */,
 				8DBF8BDB0BD18BC704604D82 /* SongSearch.swift */,
+				56A89D34AD629A2E4D567A8D /* Localizable.strings */,
 			);
 			path = Elysia;
 			sourceTree = "<group>";
@@ -93,6 +97,7 @@
 			knownRegions = (
 				Base,
 				en,
+				"zh-Hans",
 			);
 			mainGroup = D76D69E49326741925B16B68;
 			minimizedProjectReferenceProxies = 1;
@@ -112,6 +117,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0C1E268D1EAB5AD3D9FE5CD0 /* Assets.xcassets in Resources */,
+				34C29CA88FB61E30E4F5BAF8 /* Localizable.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -131,6 +137,18 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		56A89D34AD629A2E4D567A8D /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				19A96EACC17BD9736A05661B /* en */,
+				8A5FD21DDB2768015E29A941 /* zh-Hans */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
 		3DD368CE076BFAB446DB5F1A /* Release */ = {

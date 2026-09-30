@@ -1,0 +1,66 @@
+/*
+   Elysia — English language pack.
+
+   Keys are semantic, not source strings: this file and zh-Hans.lproj are two
+   independent packs, so wording can change in one without touching the other.
+   Keep both files in sync when a key is added or removed.
+*/
+
+/* Sidebar */
+"sidebar.settings"  = "Settings";
+"sidebar.songs"     = "Songs";
+"sidebar.playlists" = "Playlists";
+"sidebar.albums"    = "Albums";
+"sidebar.start"     = "Start";
+
+/* Search */
+"search.placeholder" = "Search songs";
+"search.clear"       = "Clear search";
+
+/* Now playing */
+"player.notPlaying" = "Not playing";
+
+/* Song list */
+"songs.loading"        = "Loading songs from Apple Music…";
+"songs.noMatch.title"  = "No matching songs";
+"songs.noMatch.hint"   = "Try a different keyword";
+"songs.empty.title"    = "No songs found";
+"songs.empty.hint"     = "Make sure Apple Music is signed in and has a library";
+
+/* Settings — language */
+/* Language names stay in their own language (endonyms), as macOS does:
+   a Chinese reader looks for "简体中文" whatever the current UI language is. */
+"settings.language"                  = "Language";
+"settings.language.system"           = "Follow System";
+"settings.language.english"          = "English";
+"settings.language.chinese"          = "简体中文";
+"settings.language.restart.title"    = "Language Changed";
+"settings.language.restart.message"  = "Elysia needs to restart before the new language takes effect.";
+
+/* Settings — library */
+"settings.library"           = "Library";
+"settings.songCount"         = "Song count";
+"settings.lastRead"          = "Last read";
+"settings.lastRead.never"    = "Not read yet";
+"settings.library.hint"      = "After adding or removing songs in Apple Music, use Refresh to read the library again. A custom order is kept: new songs are appended and removed ones are dropped.";
+"settings.refresh"           = "Refresh songs";
+"settings.refreshing"        = "Reading…";
+
+/* Settings — song order */
+"settings.order"                 = "Song order";
+"settings.order.current"         = "Current order";
+"settings.order.custom"          = "Custom order";
+"settings.order.default"         = "Default order";
+"settings.order.hint"            = "Drag any song in the Songs list to reorder it. The new order is saved automatically.";
+"settings.order.restore"         = "Restore default order…";
+"settings.order.restore.title"   = "Restore the default order?";
+"settings.order.restore.confirm" = "Restore Default Order";
+"settings.order.restore.message" = "Songs will return to the order they have in your Apple Music library.";
+
+/* Shared */
+"common.cancel"  = "Cancel";
+"common.later"   = "Later";
+"common.restart" = "Restart Now";
+
+/* Unimplemented sections */
+"comingSoon.message" = "This feature is still in development";

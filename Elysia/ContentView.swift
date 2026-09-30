@@ -11,7 +11,7 @@ struct ContentView: View {
     @State private var songs: [Song] = []
     @State private var isLoading = true
     @State private var repeatMode: RepeatMode = .off
-    @State private var selectedItem: String? = "歌曲"
+    @State private var selectedItem: SidebarItem? = .songs
     /// 侧边栏搜索框的文字
     @State private var searchText = ""
 
@@ -67,7 +67,8 @@ struct ContentView: View {
     // MARK: - 侧边栏栏目对应的详情内容
     @ViewBuilder
     private var detailView: some View {
-        if selectedItem == "设置" {
+        switch selectedItem {
+        case .settings:
             SettingsView(
                 songCount: songs.count,
                 isCustomOrder: isCustomOrder,
@@ -76,10 +77,10 @@ struct ContentView: View {
                 onResetOrder: resetOrder,
                 onRefresh: refreshLibrary
             )
-        } else if selectedItem == "歌曲" || selectedItem == nil {
+        case .songs, nil:
             playerView
-        } else {
-            ComingSoonView(title: selectedItem ?? "")
+        case .playlists, .albums, .start:
+            ComingSoonView(item: selectedItem ?? .songs)
         }
     }
 
@@ -313,9 +314,43 @@ struct ContentView: View {
     }
 }
 
+// MARK: - 侧边栏栏目
+//
+// 用稳定的枚举值作为选中标识，显示文字单独本地化，
+// 这样切换语言不会影响选中状态与分支逻辑。
+enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
+    case settings
+    case songs
+    case playlists
+    case albums
+    case start
+
+    var id: String { rawValue }
+
+    var title: LocalizedStringKey {
+        switch self {
+        case .settings:  return "sidebar.settings"
+        case .songs:     return "sidebar.songs"
+        case .playlists: return "sidebar.playlists"
+        case .albums:    return "sidebar.albums"
+        case .start:     return "sidebar.start"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .settings:  return "gearshape"
+        case .songs:     return "music.note"
+        case .playlists: return "music.note.list"
+        case .albums:    return "square.stack"
+        case .start:     return "play.circle"
+        }
+    }
+}
+
 // MARK: - 侧边栏
 struct SidebarView: View {
-    @Binding var selection: String?
+    @Binding var selection: SidebarItem?
     @Binding var searchText: String
 
     var body: some View {
@@ -323,11 +358,10 @@ struct SidebarView: View {
             searchField
             List(selection: $selection) {
                 Section {
-                    Label("设置", systemImage: "gearshape").tag("设置")
-                    Label("歌曲", systemImage: "music.note").tag("歌曲")
-                    Label("歌单", systemImage: "music.note.list").tag("歌单")
-                    Label("专辑", systemImage: "square.stack").tag("专辑")
-                    Label("开始", systemImage: "play.circle").tag("开始")
+                    ForEach(SidebarItem.allCases) { item in
+                        Label(item.title, systemImage: item.systemImage)
+                            .tag(item)
+                    }
                 }
             }
             .listStyle(.sidebar)
@@ -342,7 +376,7 @@ struct SidebarView: View {
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
 
-            TextField("搜索歌曲", text: $searchText)
+            TextField("search.placeholder", text: $searchText)
                 .textFieldStyle(.plain)
                 .font(.system(size: 12))
                 .onExitCommand { searchText = "" }
@@ -356,7 +390,7 @@ struct SidebarView: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
-                .help("清除搜索")
+                .help("search.clear")
             }
         }
         .padding(.horizontal, 8)
@@ -524,7 +558,7 @@ struct NowPlayingInline: View {
                 .clipShape(RoundedRectangle(cornerRadius: 5))
 
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(title ?? "未在播放")
+                    Text(title ?? String(localized: "player.notPlaying"))
                         .font(.system(size: 12))
                         .fontWeight(isPlaying ? .bold : .semibold)
                         // 播放中红色；暂停或未播放时跟随系统前景色
@@ -606,15 +640,15 @@ struct SongListView: View {
     var body: some View {
         Group {
             if isLoading {
-                ProgressView("正在从 Apple Music 获取歌曲...")
+                ProgressView("songs.loading")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if songs.isEmpty, isSearching {
                 VStack(spacing: 8) {
                     Image(systemName: "magnifyingglass")
                         .font(.largeTitle)
                         .foregroundColor(.secondary)
-                    Text("没有找到匹配的歌曲").foregroundColor(.secondary)
-                    Text("换个关键词试试")
+                    Text("songs.noMatch.title").foregroundColor(.secondary)
+                    Text("songs.noMatch.hint")
                         .font(.caption).foregroundColor(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -623,8 +657,8 @@ struct SongListView: View {
                     Image(systemName: "music.note.list")
                         .font(.largeTitle)
                         .foregroundColor(.secondary)
-                    Text("没有找到歌曲").foregroundColor(.secondary)
-                    Text("请确认 Apple Music 已登录并拥有资料库")
+                    Text("songs.empty.title").foregroundColor(.secondary)
+                    Text("songs.empty.hint")
                         .font(.caption).foregroundColor(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -854,6 +888,42 @@ struct SongRowView: View {
     }
 }
 
+// MARK: - 应用语言
+//
+// 用 macOS 标准机制：把选择写进本应用的 AppleLanguages，
+// 系统在下次启动时据此挑选 Localizable.strings，因此需要重启才生效。
+enum AppLanguage: String, CaseIterable, Identifiable {
+    case system = ""
+    case english = "en"
+    case simplifiedChinese = "zh-Hans"
+
+    var id: String { rawValue }
+
+    var title: LocalizedStringKey {
+        switch self {
+        case .system:            return "settings.language.system"
+        case .english:           return "settings.language.english"
+        case .simplifiedChinese: return "settings.language.chinese"
+        }
+    }
+
+    /// 写入 / 清除 AppleLanguages
+    func apply() {
+        switch self {
+        case .system:
+            UserDefaults.standard.removeObject(forKey: "AppleLanguages")
+        case .english, .simplifiedChinese:
+            UserDefaults.standard.set([rawValue], forKey: "AppleLanguages")
+        }
+    }
+
+    /// 当前生效的语言（用于恢复选择状态）
+    static var current: AppLanguage {
+        guard let code = Bundle.main.preferredLocalizations.first else { return .system }
+        return AppLanguage(rawValue: code) ?? .system
+    }
+}
+
 // MARK: - 设置
 struct SettingsView: View {
     let songCount: Int
@@ -864,82 +934,114 @@ struct SettingsView: View {
     let onRefresh: () -> Void
 
     @State private var isConfirmingReset = false
+    @AppStorage("appLanguage") private var appLanguageRawValue = AppLanguage.system.rawValue
+    @State private var isConfirmingRestart = false
 
     var body: some View {
         Form {
-            Section("曲库") {
-                LabeledContent("歌曲数量") {
+            Section("settings.language") {
+                Picker("settings.language", selection: $appLanguageRawValue) {
+                    ForEach(AppLanguage.allCases) { language in
+                        Text(language.title).tag(language.rawValue)
+                    }
+                }
+                .labelsHidden()
+                .onChange(of: appLanguageRawValue) { newValue in
+                    (AppLanguage(rawValue: newValue) ?? .system).apply()
+                    isConfirmingRestart = true
+                }
+            }
+
+            Section("settings.library") {
+                LabeledContent("settings.songCount") {
                     Text("\(songCount)")
                         .foregroundStyle(.secondary)
                 }
-                LabeledContent("上次读取") {
+                LabeledContent("settings.lastRead") {
                     Text(lastRefreshedText)
                         .foregroundStyle(.secondary)
                 }
-                Text("在 Apple Music 中新增或删除歌曲后，点按「刷新歌单」重新读取资料库。自定义排序会保留，新歌会追加到末尾。")
+                Text("settings.library.hint")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
                 HStack(spacing: 8) {
-                    Button("刷新歌单", action: onRefresh)
+                    Button("settings.refresh", action: onRefresh)
                         .keyboardShortcut("r", modifiers: .command)
                         .disabled(isRefreshing)
 
                     if isRefreshing {
                         ProgressView()
                             .controlSize(.small)
-                        Text("正在读取…")
+                        Text("settings.refreshing")
                             .font(.callout)
                             .foregroundStyle(.secondary)
                     }
                 }
             }
 
-            Section("歌曲排序") {
-                LabeledContent("当前排序") {
-                    Text(isCustomOrder ? "自定义排序" : "默认排序")
+            Section("settings.order") {
+                LabeledContent("settings.order.current") {
+                    Text(isCustomOrder ? LocalizedStringKey("settings.order.custom") : LocalizedStringKey("settings.order.default"))
                         .foregroundStyle(.secondary)
                 }
-                Text("在「歌曲」列表中拖动任意歌曲即可调整顺序，新的顺序会自动保存。")
+                Text("settings.order.hint")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Button("恢复默认排序…") {
+                Button("settings.order.restore") {
                     isConfirmingReset = true
                 }
                 .disabled(!isCustomOrder)
             }
         }
         .formStyle(.grouped)
-        .alert("要恢复默认排序吗？", isPresented: $isConfirmingReset) {
-            Button("取消", role: .cancel) {}
-            Button("恢复默认排序", role: .destructive, action: onResetOrder)
+        .alert("settings.order.restore.title", isPresented: $isConfirmingReset) {
+            Button("common.cancel", role: .cancel) {}
+            Button("settings.order.restore.confirm", role: .destructive, action: onResetOrder)
                 .keyboardShortcut(.defaultAction)
         } message: {
-            Text("歌曲将恢复为 Apple Music 资料库中的原始顺序。")
+            Text("settings.order.restore.message")
+        }
+        .alert("settings.language.restart.title", isPresented: $isConfirmingRestart) {
+            Button("common.later", role: .cancel) {}
+            Button("common.restart", action: relaunch)
+                .keyboardShortcut(.defaultAction)
+        } message: {
+            Text("settings.language.restart.message")
+        }
+    }
+
+    /// 重新启动应用，让新的语言设置生效
+    private func relaunch() {
+        let url = Bundle.main.bundleURL
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.createsNewApplicationInstance = true
+        NSWorkspace.shared.openApplication(at: url, configuration: configuration) { _, _ in
+            DispatchQueue.main.async { NSApp.terminate(nil) }
         }
     }
 
     private var lastRefreshedText: String {
-        guard let lastRefreshed else { return "尚未读取" }
+        guard let lastRefreshed else { return String(localized: "settings.lastRead.never") }
         return lastRefreshed.formatted(date: .omitted, time: .shortened)
     }
 }
 
 // MARK: - 尚未实现的栏目
 struct ComingSoonView: View {
-    let title: String
+    let item: SidebarItem
 
     var body: some View {
         VStack(spacing: 8) {
             Image(systemName: "hammer")
                 .font(.largeTitle)
                 .foregroundStyle(.secondary)
-            Text(title)
+            Text(item.title)
                 .font(.title3)
-            Text("该功能还在开发中")
+            Text("comingSoon.message")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
