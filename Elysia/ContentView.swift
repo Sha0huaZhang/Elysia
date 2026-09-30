@@ -4,6 +4,9 @@ import AppKit
 // MARK: - 主视图
 struct ContentView: View {
     @State private var nowPlayingID: String? = nil
+    @State private var nowPlayingTitle: String? = nil
+    @State private var nowPlayingArtist: String? = nil
+    @State private var nowPlayingArtwork: NSImage? = nil
     @State private var isPlaying: Bool = false
     @State private var songs: [Song] = []
     @State private var isLoading = true
@@ -47,6 +50,9 @@ struct ContentView: View {
             detailView
         }
         .frame(minWidth: 800, minHeight: 600)
+        .task(id: nowPlayingID) {
+            await loadNowPlayingArtwork()
+        }
         .task {
             MusicData.forceRepeatOff()
             await loadSongs()
@@ -80,6 +86,9 @@ struct ContentView: View {
             PlayerControlBar(
                 isPlaying: isPlaying,
                 repeatMode: repeatMode,
+                title: nowPlayingTitle,
+                artist: nowPlayingArtist,
+                artwork: nowPlayingArtwork,
                 position: $position,
                 duration: duration,
                 isDragging: $isDragging,
@@ -90,13 +99,7 @@ struct ContentView: View {
                 onPrevious: { playOffset(-1) },
                 onNext: { playOffset(1) },
                 onToggleRepeat: { cycleRepeatMode() },
-                onTogglePlayPause: {
-                    let newState = !isPlaying
-                    isPlaying = newState
-                    pendingPlayState = newState
-                    pendingPlayStateTime = Date()
-                    MusicData.togglePlayPause()
-                },
+                onTogglePlayPause: { togglePlayPause() },
                 onSeek: { seconds in
                     MusicData.seek(to: seconds)
                     pendingSeekTarget = seconds
@@ -131,6 +134,16 @@ struct ContentView: View {
         }
     }
 
+    /// 载入在播歌曲的封面（歌曲变化时触发）
+    private func loadNowPlayingArtwork() async {
+        guard let id = nowPlayingID else {
+            await MainActor.run { nowPlayingArtwork = nil }
+            return
+        }
+        let image = await MusicData.fetchArtwork(persistentID: id)
+        await MainActor.run { nowPlayingArtwork = image }
+    }
+
     /// 重新读取资料库，用于用户在 Apple Music 中增删歌曲之后
     private func refreshLibrary() {
         guard !isRefreshing, !isLoading else { return }
@@ -155,6 +168,8 @@ struct ContentView: View {
                 }
 
                 self.nowPlayingID = status.persistentID
+                self.nowPlayingTitle = status.title
+                self.nowPlayingArtist = status.artist
 
                 // 处理乐观播放/暂停状态
                 if let expected = self.pendingPlayState {
@@ -261,6 +276,15 @@ struct ContentView: View {
         }
     }
 
+    /// 播放 / 暂停（按钮与空格键共用）
+    private func togglePlayPause() {
+        let newState = !isPlaying
+        isPlaying = newState
+        pendingPlayState = newState
+        pendingPlayStateTime = Date()
+        MusicData.togglePlayPause()
+    }
+
     /// 拖动排序后保存新的顺序
     private func persistOrder(_ ordered: [Song]) {
         orderStore.save(ordered)
@@ -298,6 +322,9 @@ struct SidebarView: View {
 struct PlayerControlBar: View {
     let isPlaying: Bool
     let repeatMode: RepeatMode
+    let title: String?
+    let artist: String?
+    let artwork: NSImage?
     @Binding var position: Double
     let duration: Double
     @Binding var isDragging: Bool
@@ -313,60 +340,61 @@ struct PlayerControlBar: View {
     let onVolumeChange: (Double) -> Void
 
     var body: some View {
-        HStack(spacing: 20) {
-            HStack(spacing: 20) {
-                Button(action: onPrevious) {
-                    Image(systemName: "backward.fill")
-                }
-                .buttonStyle(.plain)
+        // 左右两侧块等宽，中间的正在播放信息因此精确居中，且不会与两侧重叠
+        HStack(spacing: 0) {
+            transportControls
+                .frame(width: 190, alignment: .leading)
 
-                Button(action: onTogglePlayPause) {
-                    Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                }
-                .buttonStyle(.plain)
-
-                Button(action: onNext) {
-                    Image(systemName: "forward.fill")
-                }
-                .buttonStyle(.plain)
-
-                Button(action: onToggleRepeat) {
-                    Image(systemName: repeatIcon)
-                        .foregroundColor(repeatMode == .off ? .primary : .accentColor)
-                }
-                .buttonStyle(.plain)
-            }
-            .font(.title3)
-
-            Text(formatTime(isDragging ? dragValue : position))
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .monospacedDigit()
-
-            Slider(
-                value: Binding(
-                    get: { isDragging ? dragValue : position },
-                    set: { newValue in
-                        dragValue = newValue
-                        isDragging = true
-                    }
-                ),
-                in: 0...max(duration, 1),
-                onEditingChanged: { editing in
-                    if !editing {
-                        onSeek(dragValue)
-                    }
-                }
+            NowPlayingInline(
+                title: title,
+                artist: artist,
+                artwork: artwork,
+                isPlaying: isPlaying,
+                position: $position,
+                duration: duration,
+                isDragging: $isDragging,
+                dragValue: $dragValue,
+                onSeek: onSeek
             )
-            .controlSize(.mini)
-            .tint(.red)
-            .frame(height: 12)
+            .frame(maxWidth: 400)
 
-            Text(formatTime(duration))
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .monospacedDigit()
+            volumeControls
+                .frame(width: 190, alignment: .trailing)
+        }
+        .padding(.horizontal, 20)
+        // 略微加高：封面获得更大的上边距，内部内容仍整体垂直居中
+        .frame(height: 66)
+    }
 
+    private var transportControls: some View {
+        HStack(spacing: 20) {
+            Button(action: onPrevious) {
+                Image(systemName: "backward.fill")
+            }
+            .buttonStyle(.plain)
+
+            Button(action: onTogglePlayPause) {
+                Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut(.space, modifiers: [])
+
+            Button(action: onNext) {
+                Image(systemName: "forward.fill")
+            }
+            .buttonStyle(.plain)
+
+            Button(action: onToggleRepeat) {
+                Image(systemName: repeatIcon)
+                    .foregroundColor(repeatMode == .off ? .primary : .accentColor)
+            }
+            .buttonStyle(.plain)
+        }
+        .font(.title3)
+    }
+
+    private var volumeControls: some View {
+        HStack(spacing: 8) {
             Image(systemName: volumeIcon)
                 .font(.caption)
                 .foregroundColor(.secondary)
@@ -390,10 +418,8 @@ struct PlayerControlBar: View {
             )
             .controlSize(.mini)
             .tint(.red)
-            .frame(width: 50, height: 12)
+            .frame(width: 80, height: 12)
         }
-        .padding(.horizontal, 20)
-        .frame(height: 50)
     }
 
     private var repeatIcon: String {
@@ -411,6 +437,92 @@ struct PlayerControlBar: View {
         if v < 66 { return "speaker.wave.1.fill" }
         return "speaker.wave.2.fill"
     }
+}
+
+// MARK: - 控制条中央的正在播放信息（无独立外框）
+struct NowPlayingInline: View {
+    let title: String?
+    let artist: String?
+    let artwork: NSImage?
+    let isPlaying: Bool
+    @Binding var position: Double
+    let duration: Double
+    @Binding var isDragging: Bool
+    @Binding var dragValue: Double
+    let onSeek: (Double) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            // 封面、歌名、歌手视为一个整体
+            HStack(spacing: 8) {
+                Group {
+                    if let artwork {
+                        Image(nsImage: artwork)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    } else {
+                        RoundedRectangle(cornerRadius: 5)
+                            .fill(Color.gray.opacity(0.3))
+                            .overlay(
+                                Image(systemName: "music.note")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.secondary)
+                            )
+                    }
+                }
+                .frame(width: 36, height: 36)
+                .clipShape(RoundedRectangle(cornerRadius: 5))
+
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(title ?? "未在播放")
+                        .font(.system(size: 12))
+                        .fontWeight(isPlaying ? .bold : .semibold)
+                        // 播放中红色；暂停或未播放时跟随系统前景色
+                        .foregroundStyle(isPlaying ? Color.red : Color.primary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+
+                    Text(artist ?? "—")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+            }
+
+            // 进度条在他们下面，从左边缘起
+            HStack(spacing: 6) {
+                Text(formatTime(isDragging ? dragValue : position))
+                    .font(.system(size: 9))
+                    .foregroundColor(.secondary)
+                    .monospacedDigit()
+
+                Slider(
+                    value: Binding(
+                        get: { isDragging ? dragValue : position },
+                        set: { newValue in
+                            dragValue = newValue
+                            isDragging = true
+                        }
+                    ),
+                    in: 0...max(duration, 1),
+                    onEditingChanged: { editing in
+                        if !editing {
+                            onSeek(dragValue)
+                        }
+                    }
+                )
+                .controlSize(.mini)
+                .tint(.red)
+
+                Text(formatTime(duration))
+                    .font(.system(size: 9))
+                    .foregroundColor(.secondary)
+                    .monospacedDigit()
+            }
+        }
+        .animation(.easeInOut(duration: 0.15), value: isPlaying)
+    }
 
     private func formatTime(_ seconds: Double) -> String {
         guard seconds.isFinite, seconds >= 0 else { return "0:00" }
@@ -418,6 +530,7 @@ struct PlayerControlBar: View {
         return String(format: "%d:%02d", total / 60, total % 60)
     }
 }
+
 
 // MARK: - 歌曲列表
 struct SongListView: View {
