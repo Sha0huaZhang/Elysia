@@ -427,6 +427,17 @@ struct SongListView: View {
     let isPlaying: Bool
     let onReorder: ([Song]) -> Void
 
+    /// 正在拖动的歌曲 ID
+    @State private var draggingID: String? = nil
+    /// 按下时鼠标在行内的垂直偏移（全局坐标）
+    @State private var dragGrabOffsetY: CGFloat? = nil
+    /// 鼠标当前的全局 Y，卡片据此跟随
+    @State private var dragPointerY: CGFloat? = nil
+    /// 拖动中卡片的封面
+    @State private var draggedArtwork: NSImage? = nil
+    /// 各行在全局坐标系中的位置，用于计算中心线
+    @State private var rowFrames: [String: CGRect] = [:]
+
     var body: some View {
         Group {
             if isLoading {
@@ -443,21 +454,129 @@ struct SongListView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
+                songList
+            }
+        }
+    }
+
+    private var songList: some View {
+        GeometryReader { container in
+            ZStack(alignment: .topLeading) {
                 List {
-                    ForEach(songs) { song in
+                    ForEach(Array(songs.enumerated()), id: \.element.id) { index, song in
                         SongRowView(
                             song: song,
-                            isPlaying: song.id == nowPlayingID && isPlaying
+                            isPlaying: song.id == nowPlayingID && isPlaying,
+                            isDragging: draggingID == song.id,
+                            onDragChanged: { pointerY, startY, artwork in
+                                if draggingID != song.id {
+                                    draggingID = song.id
+                                    draggedArtwork = artwork
+                                    dragGrabOffsetY = SongReorder.grabOffset(
+                                        pointerStartY: startY,
+                                        rowMinY: rowFrames[song.id]?.minY ?? startY
+                                    )
+                                }
+                                dragPointerY = pointerY
+                            },
+                            onDragEnded: { pointerY, startY in
+                                finishDrag(of: song, index: index, translation: pointerY - startY)
+                            }
                         )
-                    }
-                    .onMove { source, destination in
-                        songs.move(fromOffsets: source, toOffset: destination)
-                        onReorder(songs)
                     }
                 }
                 .listStyle(.plain)
+                .onPreferenceChange(RowFrameKey.self) { rowFrames = $0 }
+
+                if let id = draggingID, let frame = rowFrames[id],
+                   let song = songs.first(where: { $0.id == id }),
+                   let pointerY = dragPointerY, let grabOffset = dragGrabOffsetY {
+                    SongDragCard(song: song, artwork: draggedArtwork)
+                        .frame(width: frame.width, height: frame.height)
+                        // 由鼠标全局坐标直接定位，不使用测量帧，避免坐标系偏差带来的固定错位
+                        .offset(y: SongReorder.dragCardTop(
+                            pointerY: pointerY,
+                            grabOffsetY: grabOffset,
+                            containerMinY: container.frame(in: .global).minY
+                        ))
+                        .allowsHitTesting(false)
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+    }
+
+    /// 落点对应的插槽：按拖动卡片的中心线判断
+    private func targetSlot(for translation: CGFloat, frame: CGRect, index: Int) -> Int {
+        let centreY = frame.midY + translation
+        // 行高一致，未拖动时第 i 行的中心线可由拖动行的中心线推算
+        let centres = songs.indices.map { frame.midY + CGFloat($0 - index) * frame.height }
+        return SongReorder.slot(forDraggedCentreY: centreY, rowCentres: centres)
+    }
+
+    private func finishDrag(of song: Song, index: Int, translation: CGFloat) {
+        defer {
+            draggingID = nil
+            dragGrabOffsetY = nil
+            dragPointerY = nil
+            draggedArtwork = nil
+        }
+
+        guard let frame = rowFrames[song.id] else { return }
+        let slot = targetSlot(for: translation, frame: frame, index: index)
+        let reordered = SongReorder.moving(song.id, toSlot: slot, in: songs)
+        guard reordered != songs else { return }
+
+        withAnimation(.easeInOut(duration: 0.15)) {
+            songs = reordered
+        }
+        onReorder(songs)
+    }
+}
+
+/// 报告单行在列表坐标系中的位置
+private struct RowFrameKey: PreferenceKey {
+    static var defaultValue: [String: CGRect] = [:]
+    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
+        value.merge(nextValue()) { _, new in new }
+    }
+}
+
+// MARK: - 拖动时跟随鼠标的卡片
+struct SongDragCard: View {
+    let song: Song
+    let artwork: NSImage?
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Group {
+                if let artwork {
+                    Image(nsImage: artwork)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } else {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.gray.opacity(0.3))
+                }
+            }
+            .frame(width: 40, height: 40)
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(song.title)
+                    .font(.body)
+                    .fontWeight(.semibold)
+                Text(song.artist)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 4)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
+        .shadow(color: .black.opacity(0.18), radius: 8, y: 2)
     }
 }
 
@@ -465,6 +584,9 @@ struct SongListView: View {
 struct SongRowView: View {
     let song: Song
     let isPlaying: Bool
+    let isDragging: Bool
+    let onDragChanged: (CGFloat, CGFloat, NSImage?) -> Void
+    let onDragEnded: (CGFloat, CGFloat) -> Void
 
     @State private var isHovering = false
     @State private var artworkImage: NSImage? = nil
@@ -502,7 +624,7 @@ struct SongRowView: View {
 
             Spacer()
 
-            if isHovering {
+            if isHovering, !isDragging {
                 Button(action: {
                     MusicData.playSong(persistentID: song.id)
                 }) {
@@ -516,6 +638,15 @@ struct SongRowView: View {
         }
         .padding(.vertical, 4)
         .contentShape(Rectangle())
+        .background(
+            GeometryReader { geo in
+                Color.clear.preference(
+                    key: RowFrameKey.self,
+                    value: [song.id: geo.frame(in: .global)]
+                )
+            }
+        )
+        .opacity(isDragging ? 0.25 : 1)
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.15)) {
                 isHovering = hovering
@@ -524,6 +655,16 @@ struct SongRowView: View {
         .onTapGesture(count: 2) {
             MusicData.playSong(persistentID: song.id)
         }
+        // 用 simultaneousGesture 让拖动与双击播放共存，互不抢占
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 4, coordinateSpace: .global)
+                .onChanged { value in
+                    onDragChanged(value.location.y, value.startLocation.y, artworkImage)
+                }
+                .onEnded { value in
+                    onDragEnded(value.location.y, value.startLocation.y)
+                }
+        )
     }
 
     private func loadArtwork() async {

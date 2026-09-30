@@ -56,3 +56,48 @@ struct SongOrderStore {
         return ordered
     }
 }
+
+/// Pure reordering maths, kept apart from the view so it can be exercised on its own.
+enum SongReorder {
+    /// Moves `draggedID` into `slot`, where slots are the gaps between songs:
+    /// slot 0 sits above the first song and slot `songs.count` below the last.
+    static func moving(_ draggedID: String, toSlot slot: Int, in songs: [Song]) -> [Song] {
+        guard let from = songs.firstIndex(where: { $0.id == draggedID }) else { return songs }
+
+        var result = songs
+        let dragged = result.remove(at: from)
+        // Removing the dragged song shifts every later gap up by one.
+        let clamped = max(0, min(slot, songs.count))
+        let adjusted = clamped > from ? clamped - 1 : clamped
+        result.insert(dragged, at: max(0, min(adjusted, result.count)))
+        return result
+    }
+
+    /// The slot a drag of `draggedID` should land in.
+    ///
+    /// Judged purely by the dragged card's centre line: the card lands in the gap
+    /// it is hovering, i.e. however many row centres sit above its centre. Dropping
+    /// between the centres of rows 2 and 3 therefore inserts between rows 2 and 3.
+    ///
+    /// Ties go to the row above: a centre line that has not passed a row's centre
+    /// is treated as resting above that row.
+    static func slot(forDraggedCentreY y: CGFloat, rowCentres: [CGFloat]) -> Int {
+        rowCentres.filter { $0 < y }.count
+    }
+
+    /// Where the pointer sat inside the row when the drag began.
+    static func grabOffset(pointerStartY: CGFloat, rowMinY: CGFloat) -> CGFloat {
+        pointerStartY - rowMinY
+    }
+
+    /// Top of the floating drag card, in the container's coordinate space.
+    ///
+    /// Derived from the pointer alone rather than from a measured row frame: a
+    /// measured frame can disagree with the pointer's coordinate space by a
+    /// constant, which would shift the card away from the cursor for the whole
+    /// drag even though the drop logic (which only compares frames with each
+    /// other) stays correct.
+    static func dragCardTop(pointerY: CGFloat, grabOffsetY: CGFloat, containerMinY: CGFloat) -> CGFloat {
+        pointerY - grabOffsetY - containerMinY
+    }
+}
