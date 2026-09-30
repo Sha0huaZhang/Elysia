@@ -8,6 +8,14 @@ struct ContentView: View {
     @State private var songs: [Song] = []
     @State private var isLoading = true
     @State private var repeatMode: RepeatMode = .off
+    @State private var selectedItem: String? = "歌曲"
+
+    /// Apple Music 资料库的原始顺序，用于恢复默认排序
+    @State private var librarySongs: [Song] = []
+    /// 当前是否使用用户自定义排序
+    @State private var isCustomOrder = false
+
+    private let orderStore = SongOrderStore()
 
     @State private var position: Double = 0
     @State private var duration: Double = 0
@@ -30,45 +38,9 @@ struct ContentView: View {
 
     var body: some View {
         NavigationSplitView {
-            SidebarView()
+            SidebarView(selection: $selectedItem)
         } detail: {
-            VStack(spacing: 0) {
-                PlayerControlBar(
-                    isPlaying: isPlaying,
-                    repeatMode: repeatMode,
-                    position: $position,
-                    duration: duration,
-                    isDragging: $isDragging,
-                    dragValue: $dragValue,
-                    volume: $volume,
-                    isDraggingVolume: $isDraggingVolume,
-                    dragVolumeValue: $dragVolumeValue,
-                    onPrevious: { playOffset(-1) },
-                    onNext: { playOffset(1) },
-                    onToggleRepeat: { cycleRepeatMode() },
-                    onTogglePlayPause: {
-                        let newState = !isPlaying
-                        isPlaying = newState
-                        pendingPlayState = newState
-                        pendingPlayStateTime = Date()
-                        MusicData.togglePlayPause()
-                    },
-                    onSeek: { seconds in
-                        MusicData.seek(to: seconds)
-                        pendingSeekTarget = seconds
-                    },
-                    onVolumeChange: { newVolume in
-                        MusicData.setVolume(newVolume)
-                    }
-                )
-                Divider()
-                SongListView(
-                    songs: songs,
-                    isLoading: isLoading,
-                    nowPlayingID: nowPlayingID,
-                    isPlaying: isPlaying
-                )
-            }
+            detailView
         }
         .frame(minWidth: 800, minHeight: 600)
         .task {
@@ -80,12 +52,71 @@ struct ContentView: View {
         }
     }
 
+    // MARK: - 侧边栏栏目对应的详情内容
+    @ViewBuilder
+    private var detailView: some View {
+        if selectedItem == "设置" {
+            SettingsView(
+                songCount: songs.count,
+                isCustomOrder: isCustomOrder,
+                onResetOrder: resetOrder
+            )
+        } else if selectedItem == "歌曲" || selectedItem == nil {
+            playerView
+        } else {
+            ComingSoonView(title: selectedItem ?? "")
+        }
+    }
+
+    private var playerView: some View {
+        VStack(spacing: 0) {
+            PlayerControlBar(
+                isPlaying: isPlaying,
+                repeatMode: repeatMode,
+                position: $position,
+                duration: duration,
+                isDragging: $isDragging,
+                dragValue: $dragValue,
+                volume: $volume,
+                isDraggingVolume: $isDraggingVolume,
+                dragVolumeValue: $dragVolumeValue,
+                onPrevious: { playOffset(-1) },
+                onNext: { playOffset(1) },
+                onToggleRepeat: { cycleRepeatMode() },
+                onTogglePlayPause: {
+                    let newState = !isPlaying
+                    isPlaying = newState
+                    pendingPlayState = newState
+                    pendingPlayStateTime = Date()
+                    MusicData.togglePlayPause()
+                },
+                onSeek: { seconds in
+                    MusicData.seek(to: seconds)
+                    pendingSeekTarget = seconds
+                },
+                onVolumeChange: { newVolume in
+                    MusicData.setVolume(newVolume)
+                }
+            )
+            Divider()
+            SongListView(
+                songs: $songs,
+                isLoading: isLoading,
+                nowPlayingID: nowPlayingID,
+                isPlaying: isPlaying,
+                onReorder: persistOrder
+            )
+        }
+    }
+
     private func initialLoad() async {
         let fetched = await Task.detached(priority: .userInitiated) {
             MusicData.fetchAllSongs()
         }.value
         await MainActor.run {
-            self.songs = fetched
+            self.librarySongs = fetched
+            self.songs = orderStore.apply(to: fetched)
+            self.isCustomOrder = orderStore.isCustomized
             self.isLoading = false
         }
     }
@@ -212,14 +243,27 @@ struct ContentView: View {
         case .one:  repeatMode = .off
         }
     }
+
+    /// 拖动排序后保存新的顺序
+    private func persistOrder(_ ordered: [Song]) {
+        orderStore.save(ordered)
+        isCustomOrder = true
+    }
+
+    /// 恢复 Apple Music 资料库的原始顺序
+    private func resetOrder() {
+        orderStore.reset()
+        songs = librarySongs
+        isCustomOrder = false
+    }
 }
 
 // MARK: - 侧边栏
 struct SidebarView: View {
-    @State private var selectedItem: String? = "歌曲"
+    @Binding var selection: String?
 
     var body: some View {
-        List(selection: $selectedItem) {
+        List(selection: $selection) {
             Section {
                 Label("设置", systemImage: "gearshape").tag("设置")
                 Label("歌曲", systemImage: "music.note").tag("歌曲")
@@ -360,10 +404,11 @@ struct PlayerControlBar: View {
 
 // MARK: - 歌曲列表
 struct SongListView: View {
-    let songs: [Song]
+    @Binding var songs: [Song]
     let isLoading: Bool
     let nowPlayingID: String?
     let isPlaying: Bool
+    let onReorder: ([Song]) -> Void
 
     var body: some View {
         Group {
@@ -387,6 +432,10 @@ struct SongListView: View {
                             song: song,
                             isPlaying: song.id == nowPlayingID && isPlaying
                         )
+                    }
+                    .onMove { source, destination in
+                        songs.move(fromOffsets: source, toOffset: destination)
+                        onReorder(songs)
                     }
                 }
                 .listStyle(.plain)
@@ -466,6 +515,66 @@ struct SongRowView: View {
         await MainActor.run {
             self.artworkImage = image
         }
+    }
+}
+
+// MARK: - 设置
+struct SettingsView: View {
+    let songCount: Int
+    let isCustomOrder: Bool
+    let onResetOrder: () -> Void
+
+    @State private var isConfirmingReset = false
+
+    var body: some View {
+        Form {
+            Section("歌曲排序") {
+                LabeledContent("当前排序") {
+                    Text(isCustomOrder ? "自定义排序" : "默认排序")
+                        .foregroundStyle(.secondary)
+                }
+                LabeledContent("歌曲数量") {
+                    Text("\(songCount)")
+                        .foregroundStyle(.secondary)
+                }
+                Text("在「歌曲」列表中拖动任意歌曲即可调整顺序，新的顺序会自动保存。")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Button("恢复默认排序…") {
+                    isConfirmingReset = true
+                }
+                .disabled(!isCustomOrder)
+            }
+        }
+        .formStyle(.grouped)
+        .alert("要恢复默认排序吗？", isPresented: $isConfirmingReset) {
+            Button("取消", role: .cancel) {}
+            Button("恢复默认排序", role: .destructive, action: onResetOrder)
+                .keyboardShortcut(.defaultAction)
+        } message: {
+            Text("歌曲将恢复为 Apple Music 资料库中的原始顺序。")
+        }
+    }
+}
+
+// MARK: - 尚未实现的栏目
+struct ComingSoonView: View {
+    let title: String
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "hammer")
+                .font(.largeTitle)
+                .foregroundStyle(.secondary)
+            Text(title)
+                .font(.title3)
+            Text("该功能还在开发中")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
