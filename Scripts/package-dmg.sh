@@ -8,7 +8,7 @@
 # Environment overrides:
 #     SIGN_IDENTITY  codesigning identity (default: first "Apple Development" one)
 #     DERIVED_DATA   derived data directory
-#     OUT_DIR        where the DMG is written (default: dist/)
+#     OUT_DIR        where the DMG is written (default: dmg/)
 #
 # The build is universal (arm64 + x86_64) so Intel Macs are supported too.
 #
@@ -27,7 +27,7 @@ cd "$REPO_ROOT"
 APP_NAME="Elysia"
 SCHEME="Elysia"
 DERIVED_DATA="${DERIVED_DATA:-/tmp/elysia-package-derived}"
-OUT_DIR="${OUT_DIR:-$REPO_ROOT/dist}"
+OUT_DIR="${OUT_DIR:-$REPO_ROOT/dmg}"
 
 # ---------------------------------------------------------------- signing identity
 
