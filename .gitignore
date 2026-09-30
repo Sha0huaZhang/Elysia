@@ -27,3 +27,6 @@ DerivedData/
 # Python
 __pycache__/
 *.pyc
+
+# Packaged releases (Scripts/package-dmg.sh)
+dist/
