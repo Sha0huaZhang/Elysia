@@ -1,0 +1,20 @@
+name: Elysia
+options:
+  bundleIdPrefix: org.macwave
+  deploymentTarget:
+    macOS: "13.0"
+targets:
+  Elysia:
+    type: application
+    platform: macOS
+    sources:
+      - Elysia
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.macwave.Elysia
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        INFOPLIST_KEY_CFBundleIconFile: AppIcon
+        INFOPLIST_KEY_CFBundleIconName: AppIcon
