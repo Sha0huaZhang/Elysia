@@ -1,0 +1,111 @@
+#!/bin/bash
+#
+# elysiadmgrun — mount a packaged Elysia disk image and reveal it in Finder.
+#
+# Usage:
+#     elysiadmgrun                 mount the newest image in dmg/ and open it
+#     elysiadmgrun <path.dmg>      mount a specific image
+#     elysiadmgrun --list          list the packaged images
+#     elysiadmgrun --eject         eject the mounted image
+#
+# Install the command on your PATH, for example:
+#     ln -s "$PWD/Scripts/elysiadmgrun" ~/.local/bin/elysiadmgrun
+
+set -euo pipefail
+
+# Resolve symlinks first: the command is normally installed as a link on PATH,
+# and dirname of the link would point outside the repository.
+SOURCE="${BASH_SOURCE[0]}"
+while [[ -L "$SOURCE" ]]; do
+    DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+    SOURCE="$(readlink "$SOURCE")"
+    [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+REPO_ROOT="$(cd -P "$(dirname "$SOURCE")/.." && pwd)"
+IMAGE_DIR="$REPO_ROOT/dmg"
+VOLUME_NAME="Elysia"
+
+usage() {
+    sed -n '2,13p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+}
+
+# The mount point is not always /Volumes/Elysia: if that name is taken macOS
+# appends a number, giving /Volumes/Elysia 1, so it has to be looked up.
+mounted_mount_point() {
+    mount | awk '/ on \/Volumes\// { print $3 }' \
+        | grep -E "^/Volumes/${VOLUME_NAME}( [0-9]+)?$" \
+        | head -1
+}
+
+mounted_device() {
+    mount | awk -v point="$1" '$3 == point { print $1; exit }'
+}
+
+eject() {
+    local point
+    point="$(mounted_mount_point)"
+    if [[ -z "$point" ]]; then
+        echo "nothing mounted for $VOLUME_NAME"
+        return 0
+    fi
+    # Detach by device: the mount point can contain a space.
+    hdiutil detach "$(mounted_device "$point")" >/dev/null
+    echo "ejected $point"
+}
+
+list_images() {
+    local found=0 image
+    for image in "$IMAGE_DIR"/*.dmg; do
+        [[ -e "$image" ]] || continue
+        echo "$image"
+        found=1
+    done
+    if [[ "$found" == 0 ]]; then
+        echo "error: no images in $IMAGE_DIR — build one with Scripts/package-dmg.sh" >&2
+        return 1
+    fi
+}
+
+newest_image() {
+    local image newest="" newest_time=0 time
+    while IFS= read -r image; do
+        time="$(stat -f '%m' "$image")"
+        if (( time > newest_time )); then
+            newest_time="$time"
+            newest="$image"
+        fi
+    done < <(list_images)
+    echo "$newest"
+}
+
+case "${1:-}" in
+    -h|--help) usage; exit 0 ;;
+    --list)    list_images; exit 0 ;;
+    --eject)   eject; exit 0 ;;
+esac
+
+if [[ -n "${1:-}" ]]; then
+    IMAGE="$1"
+    [[ -f "$IMAGE" ]] || { echo "error: no such image: $IMAGE" >&2; exit 1; }
+else
+    IMAGE="$(newest_image)"
+fi
+
+# A stale mount would shadow the image about to be attached, and would make the
+# new one appear as "/Volumes/Elysia 1".
+if [[ -n "$(mounted_mount_point)" ]]; then
+    echo "ejecting the image that was already mounted"
+    eject >/dev/null
+fi
+
+echo "mounting $(basename "$IMAGE")"
+hdiutil attach "$IMAGE" -nobrowse -noautoopen >/dev/null
+
+MOUNTED="$(mounted_mount_point)"
+[[ -n "$MOUNTED" ]] || { echo "error: attached but found no mount point" >&2; exit 1; }
+
+# Opening the mount point is what makes Finder show the window, which applies
+# the bounds, icon size and icon positions recorded in the image's .DS_Store.
+open "$MOUNTED"
+echo "mounted at $MOUNTED — drag Elysia onto the Applications shortcut"
+echo "run '$(basename "${BASH_SOURCE[0]}") --eject' when you are done"

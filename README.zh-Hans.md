@@ -55,4 +55,20 @@ Scripts/package-dmg.sh
 需要额外声明 `com.apple.security.automation.apple-events` 权限才能继续控制「音乐」，
 而个人团队本就无法公证，启用它没有收益。
 
+### 查看打包好的镜像
+
+`Scripts/elysiadmgrun` 会挂载镜像并在 Finder 中打开，是检查安装体验最快的方式：
+
+```sh
+Scripts/elysiadmgrun              # dmg/ 下最新的镜像
+Scripts/elysiadmgrun path.dmg     # 指定镜像
+Scripts/elysiadmgrun --eject      # 卸载
+```
+
+想把它变成一条命令，做个软链放到 `PATH` 里即可：
+
+```sh
+ln -s "$PWD/Scripts/elysiadmgrun" ~/.local/bin/elysiadmgrun
+```
+
 App 图标由单张原图通过 `Scripts/generate-appicon.py` 重新生成。

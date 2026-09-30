@@ -57,5 +57,22 @@ leaves the hardened runtime off: enabling it would require the
 `com.apple.security.automation.apple-events` entitlement to keep controlling
 Music, and a personal team cannot notarize anyway.
 
+### Looking at a packaged image
+
+`Scripts/elysiadmgrun` mounts a packaged image and opens it in Finder, which is
+the quickest way to check the install experience:
+
+```sh
+Scripts/elysiadmgrun              # newest image in dmg/
+Scripts/elysiadmgrun path.dmg     # a specific image
+Scripts/elysiadmgrun --eject      # eject it again
+```
+
+To have it as a command, link it somewhere on your `PATH`:
+
+```sh
+ln -s "$PWD/Scripts/elysiadmgrun" ~/.local/bin/elysiadmgrun
+```
+
 The app icon is regenerated from a single source image with
 `Scripts/generate-appicon.py`.
