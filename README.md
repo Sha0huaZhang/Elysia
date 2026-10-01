@@ -1,5 +1,11 @@
+<div align="center">
+    <img src="images/Elysia-icon-1024.png" alt="Logo" width="256" />
+    <h1>Elysia</h1>
+</div>
+
 # Elysia
-The missing graphical interface of Apple Music.
+
+The missing graphical interface of Apple Music
 
 **English** · [简体中文](./README.zh-Hans.md)
 

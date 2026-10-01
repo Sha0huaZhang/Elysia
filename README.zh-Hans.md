@@ -1,5 +1,5 @@
 <div align="center">
-             <img src="docs/images/Elysia-icon-1024.png" alt="Logo" width="256" />
+             <img src="images/Elysia-icon-1024.png" alt="Logo" width="256" />
              <h1>Elysia</h1>
 </div>  
 
@@ -27,21 +27,27 @@ Apple Music 缺失的图形界面
 **2.优化界面结构。** I.将“艺人”栏目移至歌曲下方同时变为灰色和更小字体，便于阅读的同时兼顾美观。II.正在播放的歌曲的专辑封面边框变为红色、字体变为加粗的红色字体，同时进度条和音量调节条也为红色，增加辨识度。  
 **3.AppleMusic没有的功能。** 拖动歌曲可以调节顺序，并可以一键恢复默认。  
   
-## 对比图片     
-**Elysia：**    
-<p align="center">
-  <img src="images/compare1.png" alt="compare1" width="80%" style="max-width: 720px;">  
-<p align="center">
-  <img src="images/compare2.png" alt="compare2" width="80%" style="max-width: 720px;"> 
-    
-**Apple Music：**  
+## 对比图片
 
+**Elysia：**
+
+<p align="center">
+  <img src="images/compare1.png" alt="Elysia" width="80%" style="max-width: 720px;">
 </p>
+
 <p align="center">
-  <img src="images/compare3.png" alt="compare3" width="80%" style="max-width: 720px;">
-</p>  
+  <img src="images/compare2.png" alt="Elysia" width="80%" style="max-width: 720px;">
+</p>
+
+**Apple Music：**
+
 <p align="center">
-  <img src="images/compare4.png" alt="compare4" width="80%" style="max-width: 720px;"> 
+  <img src="images/compare3.png" alt="Apple Music" width="80%" style="max-width: 720px;">
+</p>
+
+<p align="center">
+  <img src="images/compare4.png" alt="Apple Music" width="80%" style="max-width: 720px;">
+</p>
 
 ## 安装
 
