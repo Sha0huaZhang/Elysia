@@ -56,16 +56,6 @@ Gatekeeper 会提示「无法验证开发者」。以下任一方法都可以：
   xattr -dr com.apple.quarantine /Applications/Elysia.app
   ```
 
-## 演示图片
-
-
-<p align="center">
-  <img src="images/demo1.png" alt="demo1" width="80%" style="max-width: 720px;">
-</p>
-<p align="center">
-  <img src="images/demo2.png" alt="demo2" width="80%" style="max-width: 720px;">
-</p>
-
 ## 使用方法
 **播放/暂停**： 双击歌曲或点击播放/暂停键  
 **调整歌单顺序**： 拖动歌曲到要调整到的两首歌之间并松开
