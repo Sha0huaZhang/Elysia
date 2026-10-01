@@ -233,6 +233,9 @@ struct ContentView: View {
             var nextSleep: TimeInterval = TrackEnd.base
 
             await MainActor.run {
+                // 在本轮改动 nowPlayingID 之前先判断曲目是否变了
+                let trackChanged = status.persistentID != self.nowPlayingID
+
                 self.nowPlayingID = status.persistentID
                 self.nowPlayingTitle = status.title
                 self.nowPlayingArtist = status.artist
@@ -272,17 +275,26 @@ struct ContentView: View {
                     self.isPlaying = status.isPlaying
                 }
 
-                if self.isDragging {
-                    // 拖动中
-                } else if let target = self.pendingSeekTarget {
-                    if abs(status.position - target) < 1.0 {
-                        self.position = status.position
-                        self.pendingSeekTarget = nil
-                    } else {
-                        self.position = target
-                    }
-                } else {
-                    self.position = status.position
+                // 已请求换曲、Music 还没跟上时，轮询报的仍是上一首的进度。
+                // 此时进度条必须先显示 0，否则会被旧值顶回去。
+                let awaitingSwitch = self.pendingSongID != nil && status.persistentID != self.pendingSongID
+
+                switch PositionSync.resolve(
+                    dragging: self.isDragging,
+                    awaitingSwitch: awaitingSwitch,
+                    trackChanged: trackChanged,
+                    pendingSeek: self.pendingSeekTarget,
+                    reported: status.position
+                ) {
+                case .dragging:
+                    break
+                case .reset:
+                    self.position = 0
+                case .useReported(let value):
+                    self.position = value
+                    self.pendingSeekTarget = nil
+                case .keepPending(let target):
+                    self.position = target
                 }
                 self.duration = status.duration
 
@@ -354,6 +366,10 @@ struct ContentView: View {
     private func playSong(_ id: String) {
         pendingSongID = id
         pendingSongIDTime = Date()
+        // 进度条立刻归零，不等下一次轮询；同时丢弃属于上一首的跳转目标，
+        // 否则它会继续按旧目标校正，新歌的进度条会停在旧位置。
+        position = 0
+        pendingSeekTarget = nil
         MusicData.playSong(persistentID: id)
     }
 
@@ -703,8 +719,14 @@ struct NowPlayingInline: View {
                     ),
                     in: 0...max(duration, 1),
                     onEditingChanged: { editing in
-                        if !editing {
+                        if editing {
+                            isDragging = true
+                        } else {
+                            // 松手必须把 isDragging 设回 false。少了这一步，拖过一次
+                            // 进度条之后它就永远是 true，显示值会一直取 dragValue，
+                            // 轮询也不再更新 position —— 换歌时进度条就不会归零。
                             onSeek(dragValue)
+                            isDragging = false
                         }
                     }
                 )
