@@ -6,7 +6,7 @@ Apple Music 缺失的图形界面。
 
 ## 系统要求
 
-- macOS 13 或更高版本
+- macOS Ventura13 或更高版本
 - Apple Music，且已建立资料库（Elysia 只是驱动「音乐」App，本身不播放音频）
 
 ## 界面语言
