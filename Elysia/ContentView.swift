@@ -848,6 +848,32 @@ struct SongDragCard: View {
     }
 }
 
+// MARK: - 拖动重排手势
+//
+// 只在启用重排时把拖动手势挂上去。
+//
+// 不能图省事写成 simultaneousGesture(..., including: .none) 来「关掉」拖动：
+// 被屏蔽的手势依然留在视图树里参与命中测试，会把同一行的双击吃掉，症状就是
+// 搜索时双击歌名不播放。整段不挂手势，双击才回得来。
+private struct ReorderDragModifier: ViewModifier {
+    let enabled: Bool
+    let onChanged: (CGFloat, CGFloat) -> Void
+    let onEnded: (CGFloat, CGFloat) -> Void
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if enabled {
+            content.simultaneousGesture(
+                DragGesture(minimumDistance: 4, coordinateSpace: .global)
+                    .onChanged { onChanged($0.location.y, $0.startLocation.y) }
+                    .onEnded { onEnded($0.location.y, $0.startLocation.y) }
+            )
+        } else {
+            content
+        }
+    }
+}
+
 // MARK: - 单行歌曲视图
 struct SongRowView: View {
     let song: Song
@@ -924,17 +950,13 @@ struct SongRowView: View {
         .onTapGesture(count: 2) {
             MusicData.playSong(persistentID: song.id)
         }
-        // 用 simultaneousGesture 让拖动与双击播放共存，互不抢占
-        // 搜索时用 including: .none 关掉拖动，双击播放仍然保留
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 4, coordinateSpace: .global)
-                .onChanged { value in
-                    onDragChanged(value.location.y, value.startLocation.y, artworkImage)
-                }
-                .onEnded { value in
-                    onDragEnded(value.location.y, value.startLocation.y)
-                },
-            including: isReorderEnabled ? .all : .none
+        // 拖动与双击播放共存，互不抢占；搜索时不挂手势（原因见 ReorderDragModifier）
+        .modifier(
+            ReorderDragModifier(
+                enabled: isReorderEnabled,
+                onChanged: { onDragChanged($0, $1, artworkImage) },
+                onEnded: onDragEnded
+            )
         )
     }
 
