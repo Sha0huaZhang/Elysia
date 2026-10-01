@@ -15,6 +15,10 @@ Apple Music 缺失的图形界面。
 `Elysia/zh-Hans.lproj`。默认跟随系统语言；可在**设置 → 语言**中手动指定，
 重启后生效。
 
+## 为什么选择Elysia？
+
+
+
 ## 安装
 
 1. 从 [Releases 页面](../../releases) 下载 `Elysia-x.y.z.dmg`。
@@ -33,6 +37,17 @@ Gatekeeper 会提示「无法验证开发者」。以下任一方法都可以：
   ```sh
   xattr -dr com.apple.quarantine /Applications/Elysia.app
   ```
+
+## 演示图片
+
+
+<p align="center">
+  <img src="images/demo1.png" alt="demo1" width="80%" style="max-width: 720px;">
+</p>
+<p align="center">
+  <img src="images/demo2.png" alt="demo1" width="80%" style="max-width: 720px;">
+</p>
+
 
 ## 从源码构建
 
