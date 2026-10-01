@@ -1057,6 +1057,9 @@ struct SettingsView: View {
     @AppStorage("appLanguage") private var appLanguageRawValue = AppLanguage.system.rawValue
     @State private var isConfirmingRestart = false
 
+    @State private var isCheckingVersion = false
+    @State private var versionOutcome: VersionCheck.Outcome? = nil
+
     var body: some View {
         Form {
             Section("settings.language") {
@@ -1116,6 +1119,29 @@ struct SettingsView: View {
                 }
                 .disabled(!isCustomOrder)
             }
+
+            Section("settings.version") {
+                LabeledContent("settings.version.current") {
+                    Text(AppVersion.current)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+
+                HStack(spacing: 8) {
+                    Button("settings.version.check", action: checkForUpdates)
+                        .disabled(isCheckingVersion)
+
+                    if isCheckingVersion {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("settings.version.checking")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                versionStatus
+            }
         }
         .formStyle(.grouped)
         .alert("settings.order.restore.title", isPresented: $isConfirmingReset) {
@@ -1131,6 +1157,50 @@ struct SettingsView: View {
                 .keyboardShortcut(.defaultAction)
         } message: {
             Text("settings.language.restart.message")
+        }
+    }
+
+    /// 查询结果：已是最新、有新版本（附安装指引）、或查询失败
+    @ViewBuilder
+    private var versionStatus: some View {
+        if let outcome = versionOutcome {
+            switch outcome {
+            case .upToDate:
+                Label("settings.version.upToDate", systemImage: "checkmark.circle.fill")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+
+            case .updateAvailable(let latest):
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("settings.version.available \(latest)", systemImage: "arrow.down.circle.fill")
+                        .font(.callout)
+                        .fontWeight(.semibold)
+                    Text("settings.version.guide")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button("settings.version.download") {
+                        NSWorkspace.shared.open(UpdateChecker.downloadPage)
+                    }
+                }
+
+            case .failed:
+                Label("settings.version.failed", systemImage: "exclamationmark.triangle.fill")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func checkForUpdates() {
+        isCheckingVersion = true
+        versionOutcome = nil
+        Task {
+            let tag = try? await UpdateChecker.latestTag()
+            await MainActor.run {
+                versionOutcome = VersionCheck.outcome(current: AppVersion.current, latestTag: tag)
+                isCheckingVersion = false
+            }
         }
     }
 

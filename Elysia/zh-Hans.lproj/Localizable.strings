@@ -54,6 +54,17 @@
 "settings.order.restore.confirm" = "恢复默认排序";
 "settings.order.restore.message" = "歌曲将恢复为 Apple Music 资料库中的原始顺序。";
 
+/* 设置 —— 版本信息 */
+"settings.version"                 = "版本信息";
+"settings.version.current"         = "当前版本";
+"settings.version.check"           = "查询最新版本";
+"settings.version.checking"        = "查询中…";
+"settings.version.upToDate"        = "已是最新版本。";
+"settings.version.available"       = "有新版本 %@。";
+"settings.version.guide"           = "前往下载页获取新版 .dmg，退出 Elysia 后打开 DMG，把 Elysia 拖到「应用程序」并替换旧版本。";
+"settings.version.download"        = "前往下载页";
+"settings.version.failed"          = "无法连接 GitHub，请检查网络后重试。";
+
 /* 通用 */
 "common.cancel"  = "取消";
 "common.later"   = "稍后";

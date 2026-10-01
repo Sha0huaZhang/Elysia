@@ -57,6 +57,17 @@
 "settings.order.restore.confirm" = "Restore Default Order";
 "settings.order.restore.message" = "Songs will return to the order they have in your Apple Music library.";
 
+/* Settings — version */
+"settings.version"                 = "Version";
+"settings.version.current"         = "Current version";
+"settings.version.check"           = "Check for Updates";
+"settings.version.checking"        = "Checking…";
+"settings.version.upToDate"        = "You are on the latest version.";
+"settings.version.available"       = "Version %@ is available.";
+"settings.version.guide"           = "Open the download page for the new .dmg, quit Elysia, then open the DMG and drag Elysia onto Applications, replacing the old copy.";
+"settings.version.download"        = "Open Download Page";
+"settings.version.failed"          = "Could not reach GitHub. Check your connection and try again.";
+
 /* Shared */
 "common.cancel"  = "Cancel";
 "common.later"   = "Later";
