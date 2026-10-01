@@ -45,7 +45,7 @@ Gatekeeper 会提示「无法验证开发者」。以下任一方法都可以：
   <img src="images/demo1.png" alt="demo1" width="80%" style="max-width: 720px;">
 </p>
 <p align="center">
-  <img src="images/demo2.png" alt="demo1" width="80%" style="max-width: 720px;">
+  <img src="images/demo2.png" alt="demo2" width="80%" style="max-width: 720px;">
 </p>
 
 
