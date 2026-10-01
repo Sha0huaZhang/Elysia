@@ -249,14 +249,18 @@ enum MusicData {
         }
     }
 
-    /// 接管 Apple Music 的循环与随机设置（启动时调用）。
+    /// 启动时只关掉随机播放。
     ///
-    /// 随机播放必须关掉：它会让 Music 自己往下走时挑随机的歌，与 Elysia 的顺序互相打架。
-    static func forceSequentialPlayback() {
+    /// 随机播放会让 Music 自己往下走时挑随机的歌，与 Elysia 的顺序互相打架，必须关。
+    ///
+    /// 这里**不设置循环模式**。原先启动时会把 `song repeat` 强制设为 off，但那是异步的：
+    /// 若用户在启动后立刻点循环按钮，点击会排在它前面下发，随后被它覆盖回去——表现为
+    /// 「怎么点都像没开」。现在启动不写循环，改为由界面在第一次读到 Music 的循环模式时
+    /// 采纳它（见 ContentView），两侧从一开始就同步，也不存在覆盖用户操作的窗口。
+    static func disableShuffle() {
         scriptQueue.async {
             _ = runAppleScriptSync("""
             tell application "Music"
-                set song repeat to off
                 set shuffle enabled to false
             end tell
             """)

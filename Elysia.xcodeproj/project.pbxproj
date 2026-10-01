@@ -17,7 +17,7 @@
 		64EF91626727421D1E49CB1F /* VersionCheck.swift in Sources */ = {isa = PBXBuildFile; fileRef = 533501627308B6FB572A6AF7 /* VersionCheck.swift */; };
 		6AC52737ACC0005FC103DA26 /* MusicData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A30A4F8A4703F1CB9FA1863 /* MusicData.swift */; };
 		7E1E6C0D1E049DB31C89185E /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 424B85B5E4C0CAAFB41C665B /* ContentView.swift */; };
-		7E6C6ACECC36357DCF64F53D /* TrackEnd.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3DA639ACC11323FC290279 /* TrackEnd.swift */; };
+		947B9F576CE0BEC5ADC8D1A1 /* Polling.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2405D3D29815A6720AF4980 /* Polling.swift */; };
 		97FE602EB92671F7F0D52D96 /* ElysiaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0737928E41B180E0C8404F4 /* ElysiaApp.swift */; };
 		F4B64DA47184F93B7D2C9801 /* MediaKeys.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B2A7E5A10306C7BCB1D28C8 /* MediaKeys.swift */; };
 /* End PBXBuildFile section */
@@ -31,12 +31,12 @@
 		533501627308B6FB572A6AF7 /* VersionCheck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionCheck.swift; sourceTree = "<group>"; };
 		5BA0C54EBC4DF4AF2AC64211 /* SongAdvance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongAdvance.swift; sourceTree = "<group>"; };
 		6CE4BC4FDDF7FD5A622A844D /* SongOrder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongOrder.swift; sourceTree = "<group>"; };
-		6F3DA639ACC11323FC290279 /* TrackEnd.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackEnd.swift; sourceTree = "<group>"; };
 		8A5465E72AF49B2E67186358 /* PositionSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PositionSync.swift; sourceTree = "<group>"; };
 		8A5FD21DDB2768015E29A941 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		8DBF8BDB0BD18BC704604D82 /* SongSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongSearch.swift; sourceTree = "<group>"; };
 		A0737928E41B180E0C8404F4 /* ElysiaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElysiaApp.swift; sourceTree = "<group>"; };
 		B645E8EAC09769793F3C71C1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		C2405D3D29815A6720AF4980 /* Polling.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Polling.swift; sourceTree = "<group>"; };
 		F17B0A2E22A738FA40E07275 /* Diagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Diagnostics.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -50,11 +50,11 @@
 				A0737928E41B180E0C8404F4 /* ElysiaApp.swift */,
 				3B2A7E5A10306C7BCB1D28C8 /* MediaKeys.swift */,
 				3A30A4F8A4703F1CB9FA1863 /* MusicData.swift */,
+				C2405D3D29815A6720AF4980 /* Polling.swift */,
 				8A5465E72AF49B2E67186358 /* PositionSync.swift */,
 				5BA0C54EBC4DF4AF2AC64211 /* SongAdvance.swift */,
 				6CE4BC4FDDF7FD5A622A844D /* SongOrder.swift */,
 				8DBF8BDB0BD18BC704604D82 /* SongSearch.swift */,
-				6F3DA639ACC11323FC290279 /* TrackEnd.swift */,
 				533501627308B6FB572A6AF7 /* VersionCheck.swift */,
 				56A89D34AD629A2E4D567A8D /* Localizable.strings */,
 			);
@@ -151,11 +151,11 @@
 				97FE602EB92671F7F0D52D96 /* ElysiaApp.swift in Sources */,
 				F4B64DA47184F93B7D2C9801 /* MediaKeys.swift in Sources */,
 				6AC52737ACC0005FC103DA26 /* MusicData.swift in Sources */,
+				947B9F576CE0BEC5ADC8D1A1 /* Polling.swift in Sources */,
 				3C5F2EC1987CAC641D1A7D49 /* PositionSync.swift in Sources */,
 				3580F9DC045B034F18DB2FAB /* SongAdvance.swift in Sources */,
 				3AEFE0BA18EDAB3945B0C592 /* SongOrder.swift in Sources */,
 				291BE9367DA5A31563CFAC95 /* SongSearch.swift in Sources */,
-				7E6C6ACECC36357DCF64F53D /* TrackEnd.swift in Sources */,
 				64EF91626727421D1E49CB1F /* VersionCheck.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

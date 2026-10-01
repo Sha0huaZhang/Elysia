@@ -66,6 +66,9 @@ struct ContentView: View {
     @State private var candidateTrackID: String? = nil
     @State private var stableTrackID: String? = nil
 
+    /// 是否已从 Music 采纳过一次循环模式（只做一次，之后由点击驱动）
+    @State private var didAdoptRepeat = false
+
     /// 已经提示过使用须知的版本号。按版本记录，所以更新后还会再提示一次，日常启动不打扰。
     @AppStorage("promptedVersion") private var promptedVersion = ""
     @State private var isShowingWelcome = false
@@ -95,7 +98,7 @@ struct ContentView: View {
         }
         .task {
             Diagnostics.markSession()
-            MusicData.forceSequentialPlayback()
+            MusicData.disableShuffle()
             // 接管 F7/F8/F9，走与界面按钮完全相同的逻辑
             MediaKeys.install(
                 onPrevious: { playOffset(-1) },
@@ -246,7 +249,7 @@ struct ContentView: View {
             }
             tick += 1
 
-            // 接近曲末时轮询会加密，间隔由 TrackEnd 决定
+            // 固定间隔轮询；循环由 Apple Music 处理，Elysia 无需在曲末抢时间
             var nextSleep: TimeInterval = Polling.interval
 
             await MainActor.run {
@@ -346,6 +349,15 @@ struct ContentView: View {
 
                 // 曲目结束时接管，按 Elysia 自己的顺序申请下一首。
                 //
+                // 循环模式只采纳一次：启动后第一次读到 Music 的值时同步过来。
+                // 只做一次，之后完全由点击驱动，避免「刚下发还没生效就被轮询改回去」。
+                // 这样启动时不写 Music，两侧从一开始就一致，也不存在覆盖用户操作的窗口。
+                if !self.didAdoptRepeat, let raw = status.repeatRaw, let actual = RepeatMode(rawValue: raw) {
+                    self.didAdoptRepeat = true
+                    self.repeatMode = actual
+                    Diagnostics.log("启动采纳 Music 的循环模式 = \(raw)")
+                }
+
                 // 连续两轮观察到同一首才认可为「稳定曲目」，用作「下一首」的锚点。
                 // 切歌时 Music 会在几首之间来回报当前曲目，单次读数可能是过渡态。
                 if let id = status.persistentID {
