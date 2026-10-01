@@ -432,43 +432,12 @@
         .lang-en [data-lang="zh"] {
             display: none !important;
         }
-
-        /* ========== 下载按钮 ========== */
-        .btn-download {
-            display: inline-block;
-            background-color: #99244F;
-            color: #ffffff;
-            padding: 18px 46px;
-            border-radius: 36px;
-            text-decoration: none;
-            font-weight: 700;
-            font-size: 1.25rem;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.25);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .btn-download:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 14px 34px rgba(0,0,0,0.32);
-        }
-
-        .back-home {
-            display: inline-block;
-            color: #99244F;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 1rem;
-        }
-
-        .back-home:hover {
-            text-decoration: underline;
-        }
     </style>
 </head>
 <body>
 
     <div class="lang-switch">
-        <button class="lang-btn active" type="button" data-lang-set="en" onclick="setLanguage('en')">English</button>
+        <button class="lang-btn" type="button" data-lang-set="en" onclick="setLanguage('en')">English</button>
         <button class="lang-btn" type="button" data-lang-set="zh" onclick="setLanguage('zh')">简体中文</button>
     </div>
 
@@ -478,65 +447,53 @@
         <img src="../images/logo3.jpg" alt="Elysia" class="logo-img logo-3">
     </div>
 
-    <h1 style="font-size: 2rem; margin: 0 0 6px 0;" data-lang="en">Download Elysia</h1>
-    <h1 style="font-size: 2rem; margin: 0 0 6px 0;" data-lang="zh">下载 Elysia</h1>
+    <p class="tagline" data-lang="en" style="text-align: center;">Download Elysia</p>
+    <p class="tagline" data-lang="zh" style="text-align: center;">下载 Elysia</p>
 
-    <p class="tagline" data-lang="en" style="text-align: center;">The missing graphical interface of Apple Music</p>
-    <p class="tagline" data-lang="zh" style="text-align: center;">Apple Music 缺失的图形界面</p>
-
-    <div style="margin-top: 30px;">
-        <a href="https://github.com/Sha0huaZhang/Elysia/releases/latest/download/Elysia-1.0.0.dmg" class="btn-download">
-            <span data-lang="en">Download for macOS</span>
-            <span data-lang="zh">下载 macOS 版</span>
-        </a>
-    </div>
-
-    <div class="version-block" style="color: #E63B7A; font-size: 0.95rem; margin-top: 20px; margin-bottom: 30px;">
+    <div class="version-block" style="color: #E63B7A; font-size: 0.95rem; margin-top: -10px; margin-bottom: 30px;">
         <div data-lang="en">
-            <span class="v-line">Version 1.0.0</span>
+            <span class="v-line">Latest Version : 1.0.0</span>
             <span class="v-line">Released on 2026-10-01</span>
         </div>
         <div data-lang="zh">
-            <span class="v-line">版本 1.0.0</span>
+            <span class="v-line">最新版本：1.0.0</span>
             <span class="v-line">发布于 2026-10-01</span>
         </div>
     </div>
 
-    <div style="margin-top: 6px; font-size: 0.95rem;">
-        <a href="https://github.com/Sha0huaZhang/Elysia/releases" style="color: #99244F; text-decoration: none;">
-            <span data-lang="en">All versions and release notes</span>
-            <span data-lang="zh">所有版本与更新说明</span>
-        </a>
-    </div>
+    <a href="https://github.com/Sha0huaZhang/Elysia/releases/latest/download/Elysia-1.0.0.dmg" class="btn-github">
+        <span data-lang="en">Download for macOS</span>
+        <span data-lang="zh">下载 macOS 版</span>
+    </a>
+
+    <p style="font-size: 1rem; line-height: 1.6; color: #99244F; opacity: 0.75; margin-top: 14px;" data-lang="en">
+        Elysia-1.0.0.dmg — about 2.3 MB
+    </p>
+    <p style="font-size: 1rem; line-height: 1.6; color: #99244F; opacity: 0.75; margin-top: 14px;" data-lang="zh">
+        Elysia-1.0.0.dmg —— 约 2.3 MB
+    </p>
 
     <div class="content-section" style="margin: 0 auto; padding: 20px; color: #99244F; text-align: left;">
 
-        <h2 style="font-size: 1.8rem; border-bottom: 2px solid #E63B7A; padding-bottom: 10px;" data-lang="en">Requirements</h2>
-        <h2 style="font-size: 1.8rem; border-bottom: 2px solid #E63B7A; padding-bottom: 10px;" data-lang="zh">系统要求</h2>
-        <p style="font-size: 1.1rem; line-height: 1.6; font-weight: bold;" data-lang="en">macOS Ventura (13) and above</p>
-        <p style="font-size: 1.1rem; line-height: 1.6; font-weight: bold;" data-lang="zh">macOS Ventura (13) 或更高版本</p>
-        <p style="font-size: 1.1rem; line-height: 1.6; opacity: 0.9;" data-lang="en">Apple Music with a library. Elysia drives the Music app rather than playing audio itself, so your library and playback state are left untouched.</p>
-        <p style="font-size: 1.1rem; line-height: 1.6; opacity: 0.9;" data-lang="zh">已建立资料库的 Apple Music。Elysia 只是驱动「音乐」App，本身不播放音频，因此你的资料库和播放状态不会被改动。</p>
-
-        <h2 style="font-size: 1.8rem; border-bottom: 2px solid #E63B7A; padding-bottom: 10px; margin-top: 40px;" data-lang="en">Install</h2>
-        <h2 style="font-size: 1.8rem; border-bottom: 2px solid #E63B7A; padding-bottom: 10px; margin-top: 40px;" data-lang="zh">安装</h2>
+        <h2 style="font-size: 1.8rem; border-bottom: 2px solid #E63B7A; padding-bottom: 10px; margin-top: 20px;" data-lang="en">Install</h2>
+        <h2 style="font-size: 1.8rem; border-bottom: 2px solid #E63B7A; padding-bottom: 10px; margin-top: 20px;" data-lang="zh">安装</h2>
 
         <ol style="font-size: 1.1rem; line-height: 1.8; opacity: 0.9; padding-left: 1.2em;" data-lang="en">
-            <li>Download <code style="background-color: #99244F; color: #ffffff; padding: 2px 6px; border-radius: 4px;">Elysia-1.0.0.dmg</code> with the button above.</li>
+            <li>Click the download button above.</li>
             <li>Open the DMG and drag <strong>Elysia</strong> onto the <strong>Applications</strong> shortcut.</li>
             <li>Launch Elysia and allow it to control <strong>Music</strong> when macOS asks.</li>
         </ol>
         <ol style="font-size: 1.1rem; line-height: 1.8; opacity: 0.9; padding-left: 1.2em;" data-lang="zh">
-            <li>点击上方按钮下载 <code style="background-color: #99244F; color: #ffffff; padding: 2px 6px; border-radius: 4px;">Elysia-1.0.0.dmg</code>。</li>
+            <li>点击上方下载按钮。</li>
             <li>打开 DMG，把 <strong>Elysia</strong> 拖到 <strong>Applications</strong> 快捷方式上。</li>
             <li>启动 Elysia，macOS 询问时允许它控制<strong>「音乐」</strong>。</li>
         </ol>
 
         <p style="font-size: 1.1rem; line-height: 1.6; opacity: 0.9;" data-lang="en">
-            The build is signed but <strong>not notarized</strong>, which needs a paid Apple Developer account. If macOS reports an unidentified developer, right-click Elysia in Applications and choose <strong>Open</strong>, or clear the quarantine flag:
+            The build is signed but <strong>not notarized</strong>, which needs a paid Apple Developer account. If macOS reports an unidentified developer, either right-click Elysia in Applications and choose <strong>Open</strong>, or clear the quarantine flag:
         </p>
         <p style="font-size: 1.1rem; line-height: 1.6; opacity: 0.9;" data-lang="zh">
-            安装包已签名，但<strong>未公证</strong>（公证需要付费的 Apple 开发者账号）。如果 macOS 提示「无法验证开发者」，可在「应用程序」中右键 Elysia 选择<strong>打开</strong>，或清除下载隔离标记：
+            该版本已签名，但<strong>未公证</strong>（公证需要付费的 Apple 开发者账号）。如果 macOS 提示「无法验证开发者」，可在「应用程序」中右键 Elysia 选择<strong>打开</strong>，或清除下载隔离标记：
         </p>
         <div class="code-container has-copy-btn">
             <button class="copy-btn" onclick="copyCode(this)">
@@ -548,11 +505,52 @@
             <pre><span class="code-dollar">$</span> xattr -dr com.apple.quarantine /Applications/Elysia.app</pre>
         </div>
 
-        <div style="text-align: center; margin-top: 42px;">
-            <a href="../" class="back-home">
-                <span data-lang="en">&larr; Back to home</span>
-                <span data-lang="zh">&larr; 返回首页</span>
-            </a>
+        <h2 style="font-size: 1.8rem; border-bottom: 2px solid #E63B7A; padding-bottom: 10px; margin-top: 40px;" data-lang="en">Requirements</h2>
+        <h2 style="font-size: 1.8rem; border-bottom: 2px solid #E63B7A; padding-bottom: 10px; margin-top: 40px;" data-lang="zh">系统要求</h2>
+        <ul style="font-size: 1.1rem; line-height: 1.8; opacity: 0.9; padding-left: 1.2em;" data-lang="en">
+            <li>macOS Ventura (13) or later</li>
+            <li>Apple Music with a library</li>
+            <li>Apple silicon or Intel — one universal build covers both</li>
+        </ul>
+        <ul style="font-size: 1.1rem; line-height: 1.8; opacity: 0.9; padding-left: 1.2em;" data-lang="zh">
+            <li>macOS Ventura (13) 或更高版本</li>
+            <li>已建立资料库的 Apple Music</li>
+            <li>Apple 芯片或 Intel 均可 —— 通用版已同时支持</li>
+        </ul>
+
+        <h2 style="font-size: 1.8rem; border-bottom: 2px solid #E63B7A; padding-bottom: 10px; margin-top: 40px;" data-lang="en">All Releases</h2>
+        <h2 style="font-size: 1.8rem; border-bottom: 2px solid #E63B7A; padding-bottom: 10px; margin-top: 40px;" data-lang="zh">所有版本</h2>
+        <p style="font-size: 1.1rem; line-height: 1.6; opacity: 0.9;" data-lang="en">
+            Older versions and release notes are on the
+            <a href="https://github.com/Sha0huaZhang/Elysia/releases" style="color: #99244F;">releases page</a>.
+            Building from source is covered in the
+            <a href="https://github.com/Sha0huaZhang/Elysia#readme" style="color: #99244F;">README</a>.
+        </p>
+        <p style="font-size: 1.1rem; line-height: 1.6; opacity: 0.9;" data-lang="zh">
+            历史版本与更新说明见
+            <a href="https://github.com/Sha0huaZhang/Elysia/releases" style="color: #99244F;">Releases 页面</a>；
+            从源码构建的方法见
+            <a href="https://github.com/Sha0huaZhang/Elysia#readme" style="color: #99244F;">README</a>。
+        </p>
+    </div>
+
+    <div class="contact-section">
+        <h2 data-lang="en">Back</h2>
+        <h2 data-lang="zh">返回</h2>
+        <div class="contact-divider"></div>
+        <div class="contact-items">
+            <div class="contact-item">
+                <span class="contact-label" data-lang="en">Home</span>
+                <span class="contact-label" data-lang="zh">主页</span>
+                <a href="../" style="color: #99244F;">
+                    <span data-lang="en">Elysia overview</span>
+                    <span data-lang="zh">Elysia 介绍</span>
+                </a>
+            </div>
+            <div class="contact-item">
+                <span class="contact-label">GitHub</span>
+                <a href="https://github.com/Sha0huaZhang/Elysia" target="_blank">Sha0huaZhang/Elysia</a>
+            </div>
         </div>
     </div>
 
