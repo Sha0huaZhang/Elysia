@@ -12,6 +12,10 @@ Apple Music 缺失的图形界面
 
 ## 官方网站  
 [elysia.macwave.org](https://elysia.macwave.org)  （短链接：[e.macwave.org](https://e.macwave.org)）  
+## 下载  
+
+[点此下载](https://elysia.macwave.org/Downloads)  
+
 ## 系统要求
 
 - macOS Ventura13 或更高版本
