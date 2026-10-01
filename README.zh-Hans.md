@@ -21,7 +21,7 @@ Apple Music 缺失的图形界面。
 **2.优化界面结构。** I.将“艺人”栏目移至歌曲下方同时变为灰色和更小字体，便于阅读的同时兼顾美观。II.正在播放的歌曲的专辑封面边框变为红色、字体变为加粗的红色字体，同时进度条和音量调节条也为红色，增加辨识度。  
 **3.AppleMusic没有的功能。** I.拖动歌曲可以调节顺序。  
   
-**演示图片如下**  
+## 对比图片     
 **Elysia：**    
 <p align="center">
   <img src="images/compare1.png" alt="compare1" width="80%" style="max-width: 720px;">  
@@ -66,7 +66,11 @@ Gatekeeper 会提示「无法验证开发者」。以下任一方法都可以：
   <img src="images/demo2.png" alt="demo2" width="80%" style="max-width: 720px;">
 </p>
 
-
+## 使用方法
+**播放/暂停**： 双击歌曲或点击播放/暂停键  
+**调整歌单顺序**： 拖动歌曲到要调整到的两首歌之间并松开
+**切换播放模式**： 点击顶部播放模式按钮（无/列表循环/单曲循环)
+**调整语言/恢复默认歌曲排序**： 点击左侧边栏的**设置**按钮并在窗口内调整。
 ## 从源码构建
 
 Xcode 工程由 [XcodeGen](https://github.com/yonaskolb/XcodeGen) 依据 `project.yml`
