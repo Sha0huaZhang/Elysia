@@ -62,7 +62,7 @@ restore the default order in one click.
 
 ## Install
 
-1. Download `Elysia-x.y.z.dmg` from the [website](https://elysia.com/downloads)
+1. Download `Elysia-x.y.z.dmg` from the [Official Website](https://elysia.com/downloads)
    or the [releases page](../../releases).
 2. Open the DMG and drag **Elysia** onto the **Applications** shortcut.
 3. Launch Elysia from Applications and allow it to control **Music** when macOS asks.
