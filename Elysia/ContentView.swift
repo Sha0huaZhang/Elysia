@@ -55,6 +55,10 @@ struct ContentView: View {
     /// 上述请求的时间戳，用于超时放弃
     @State private var pendingSongIDTime: Date? = nil
 
+    /// 是否正处于「按下上一首/下一首 → 算出目标 → 申请播放」的过程中。
+    /// 用来在换曲在途时压住「播完接管」，避免两者互相打架。
+    @State private var isAdvancing = false
+
     /// 上次「播完接管」的时刻。用来防止同一首被反复申请，兼作失败重试的计时。
     @State private var takenOverAt: Date? = nil
 
@@ -334,11 +338,20 @@ struct ContentView: View {
 
                 // 刚拖动过进度条时不要接管：Music 的跳转脚本可能还没执行，这一轮读到的
                 // 仍是旧进度，会被误判成曲终而跳到下一首（表现同样是「跳错歌」）。
-                if let id = status.persistentID, self.pendingSeekTarget == nil, TrackEnd.shouldTakeOver(
-                    remaining: remaining,
-                    isPlaying: status.isPlaying,
-                    secondsSinceTakeover: self.takenOverAt.map { Date().timeIntervalSince($0) }
-                ) {
+                //
+                // 同理，正在换曲时也不能接管。按下「下一首」后 Music 尚未切过去，这一轮
+                // 轮询读到的还是旧歌的曲末进度（remaining≈0），会被误判成曲终，于是以
+                // 旧歌为锚点再算一次下一首，与刚才申请的目标互相打架——谁后执行就播谁，
+                // 表现就是「跳错歌且找不出规律」。
+                if let id = status.persistentID,
+                   !self.isAdvancing,
+                   self.pendingSongID == nil,
+                   self.pendingSeekTarget == nil,
+                   TrackEnd.shouldTakeOver(
+                       remaining: remaining,
+                       isPlaying: status.isPlaying,
+                       secondsSinceTakeover: self.takenOverAt.map { Date().timeIntervalSince($0) }
+                   ) {
                     self.takenOverAt = Date()
                     self.handleSongEnded(endedID: id)
                 }
@@ -395,6 +408,9 @@ struct ContentView: View {
             return
         }
 
+        // 现场询问 Music 期间也算「换曲在途」：这段时间里轮询读到的可能还是旧歌的
+        // 曲末进度，若不压住，播完接管会插进来按旧歌再算一次下一首。
+        isAdvancing = true
         Task {
             let live = await MusicData.fetchCurrentTrackID()
             await MainActor.run {
@@ -403,6 +419,7 @@ struct ContentView: View {
                     anchorID: SongAdvance.fallbackAnchor(live: live, polled: nowPlayingID),
                     stopAtEnd: stopAtEnd
                 )
+                isAdvancing = false
             }
         }
     }
@@ -410,7 +427,17 @@ struct ContentView: View {
     /// 按锚点算出目标歌并申请播放。顺序一律以 Elysia 自己的列表为准
     /// （含用户拖拽后的自定义顺序），不使用 Apple Music 的播放队列。
     private func advance(offset: Int, anchorID: String?, stopAtEnd: Bool) {
-        let anchorIndex = anchorID.flatMap { id in songs.firstIndex { $0.id == id } }
+        let anchorIndex: Int?
+        if let id = anchorID {
+            // 知道有歌在播、却不在 Elysia 的列表里（例如正在播 Apple Music 目录里的
+            // 曲目而非资料库曲目），就无从推算。此时宁可不动作——SongAdvance 对「锚点
+            // 未知」的处理是从列表两端开始，那会跳到第一首毫不相干的歌，正是「跳错歌
+            // 又找不出规律」的另一个来源。
+            guard let found = songs.firstIndex(where: { $0.id == id }) else { return }
+            anchorIndex = found
+        } else {
+            anchorIndex = nil
+        }
 
         guard let targetIndex = SongAdvance.targetIndex(
             anchorIndex: anchorIndex,
