@@ -42,9 +42,8 @@
             height: 75px;
             width: auto;
             display: block;
-            /* 胶囊形：中间矩形、两端半圆（取高度的一半即 9999px 自动取半）
-               仅网页端显示效果，图片素材本身不变 */
-            border-radius: 9999px;
+            /* 圆角方形（此前试过胶囊形，现改回） */
+            border-radius: 18px;
         }
 
         .logo-img.logo-3 {
@@ -462,16 +461,19 @@
             box-sizing: border-box;
         }
 
-        /* 下载卡片：居中，宽度占 75%，宽高比 4.5:1（即 4~5:1） */
+        /* 下载卡片：居中，宽度占 75% 且不超过 560px，宽高比 4.5:1，
+           并限制最大高度，避免在宽窗口上被拉成一大块 */
         .download-card {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 22px;
+            gap: 20px;
             width: 75%;
+            max-width: 560px;
             aspect-ratio: 4.5 / 1;
+            max-height: 128px;
             margin: 26px auto 0;
-            padding: 16px 26px;
+            padding: 14px 22px;
             background-color: #E63B7A;
             border-radius: 26px;
             text-decoration: none;
@@ -485,11 +487,11 @@
             box-shadow: 0 14px 34px rgba(0,0,0,0.30);
         }
 
-        /* 图标高度跟随卡片高度，窄屏也不会撑破 */
+        /* 图标尺寸受限，不随卡片无限放大 */
         .download-card-icon {
-            height: 58%;
+            height: 62px;
             width: auto;
-            border-radius: 9999px;
+            border-radius: 14px;
             display: block;
             flex-shrink: 0;
         }
@@ -497,7 +499,9 @@
         .download-card-text {
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            align-items: flex-start;   /* 文件名与大小左对齐 */
+            text-align: left;          /* 覆盖 body 的居中 */
+            gap: 5px;
             color: #ffffff;
             min-width: 0;
         }
@@ -523,10 +527,16 @@
             }
             .download-card {
                 width: 92%;
+                max-width: none;
                 aspect-ratio: 3 / 1;
-                gap: 14px;
+                max-height: none;
+                gap: 12px;
                 padding: 12px 16px;
-                border-radius: 20px;
+                border-radius: 18px;
+            }
+            .download-card-icon {
+                height: 46px;
+                border-radius: 11px;
             }
             .download-card-name {
                 font-size: 1.05rem;
