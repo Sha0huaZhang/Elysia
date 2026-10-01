@@ -60,6 +60,14 @@ struct ContentView: View {
     @State private var armedTrackID: String? = nil
     @State private var advanceDeadline: Date? = nil
 
+    /// 连续两次观察到同一首才算「稳定曲目」，用来当锚点。
+    ///
+    /// 切歌过程中 Apple Music 处于过渡态：它会在几首之间来回报「当前曲目」（界面上
+    /// 甚至同时给多首显示正在播放标识）。单次读数因此不可信，锚点会跟着乱跳，算出的
+    /// 目标自然「毫无规律」。要求连续两轮一致，即可滤掉这种抖动。
+    @State private var candidateTrackID: String? = nil
+    @State private var stableTrackID: String? = nil
+
     /// 已经提示过使用须知的版本号。按版本记录，所以更新后还会再提示一次，日常启动不打扰。
     @AppStorage("promptedVersion") private var promptedVersion = ""
     @State private var isShowingWelcome = false
@@ -88,6 +96,7 @@ struct ContentView: View {
             await loadNowPlayingArtwork()
         }
         .task {
+            Diagnostics.markSession()
             MusicData.forceSequentialPlayback()
             await loadSongs()
             let v = await MusicData.fetchVolume()
@@ -336,8 +345,22 @@ struct ContentView: View {
                     self.advanceDeadline = nil
                     self.armedTrackID = nil
                 } else if let id = status.persistentID {
+                    // 连续两轮观察到同一首才升级为「稳定曲目」
+                    if id == self.candidateTrackID {
+                        if self.stableTrackID != id {
+                            self.stableTrackID = id
+                            Diagnostics.log("曲目稳定 = \(name(of: id))")
+                        }
+                    } else {
+                        if self.stableTrackID != id {
+                            Diagnostics.log("曲目候选 \(name(of: id))（上一候选 \(self.candidateTrackID.map { name(of: $0) } ?? "无")），等下一轮确认")
+                        }
+                        self.candidateTrackID = id
+                    }
+
                     // 换了一首就（重新）排定
                     if self.armedTrackID != id {
+                        Diagnostics.log("轮询观察到曲目=\(name(of: id)) dur=\(String(format: "%.1f", status.duration)) pos=\(String(format: "%.1f", status.position))")
                         self.armedTrackID = id
                         self.advanceDeadline = TrackEnd.deadline(
                             duration: status.duration,
@@ -345,6 +368,7 @@ struct ContentView: View {
                         )
                     }
                     if TrackEnd.isDue(deadline: self.advanceDeadline) {
+                        Diagnostics.log("到点接管：\(name(of: id))")
                         self.advanceDeadline = nil
                         self.armedTrackID = nil
                         self.handleSongEnded(endedID: id)
@@ -377,6 +401,7 @@ struct ContentView: View {
     /// Apple Music 的播放队列：一旦下发具体歌曲，后续「上一首 / 下一首」就都按
     /// Elysia 的列表推算，与拖拽排序保持一致。
     private func playSong(_ id: String) {
+        Diagnostics.log("playSong 申请播放 \(name(of: id))  id=\(id)")
         pendingSongID = id
         pendingSongIDTime = Date()
         // 进度条立刻归零，不等下一次轮询；同时丢弃属于上一首的跳转目标，
@@ -384,6 +409,11 @@ struct ContentView: View {
         position = 0
         pendingSeekTarget = nil
         MusicData.playSong(persistentID: id)
+    }
+
+    /// 日志里显示歌名，便于人工核对（找不到就显示截断的 ID）
+    private func name(of id: String) -> String {
+        songs.first { $0.id == id }.map { "《\($0.title)》" } ?? "id:\(id.prefix(8))"
     }
 
     /// 上一首 / 下一首。
@@ -406,9 +436,12 @@ struct ContentView: View {
         Task {
             let live = await MusicData.fetchCurrentTrackID()
             await MainActor.run {
+                Diagnostics.log("按下 \(offset > 0 ? "下一首" : "上一首")：现场查询 Music = \(live.map { name(of: $0) } ?? "空")；稳定曲目 = \(stableTrackID.map { name(of: $0) } ?? "空")")
                 advance(
                     offset: offset,
-                    anchorID: SongAdvance.fallbackAnchor(live: live, polled: nowPlayingID),
+                    // 现场值优先；取不到时用「连续两轮确认过」的稳定曲目，
+                    // 而不是可能正处在过渡抖动中的单次读数。
+                    anchorID: SongAdvance.fallbackAnchor(live: live, polled: stableTrackID),
                     stopAtEnd: stopAtEnd
                 )
             }
@@ -424,7 +457,10 @@ struct ContentView: View {
             // 曲目而非资料库曲目），就无从推算。此时宁可不动作——SongAdvance 对「锚点
             // 未知」的处理是从列表两端开始，那会跳到第一首毫不相干的歌，正是「跳错歌
             // 又找不出规律」的另一个来源。
-            guard let found = songs.firstIndex(where: { $0.id == id }) else { return }
+            guard let found = songs.firstIndex(where: { $0.id == id }) else {
+                Diagnostics.log("advance 放弃：锚点 \(name(of: id)) 不在 Elysia 列表里（共 \(songs.count) 首）")
+                return
+            }
             anchorIndex = found
         } else {
             anchorIndex = nil
@@ -436,8 +472,12 @@ struct ContentView: View {
             offset: offset,
             repeatAll: repeatMode == .all,
             stopAtEnd: stopAtEnd
-        ) else { return }
+        ) else {
+            Diagnostics.log("advance 放弃：锚点下标 \(anchorIndex.map(String.init) ?? "无") offset=\(offset) 不产生目标")
+            return
+        }
 
+        Diagnostics.log("advance offset=\(offset) 锚点#\(anchorIndex.map(String.init) ?? "无") \(anchorID.map { name(of: $0) } ?? "无") -> 目标#\(targetIndex) \(songs[targetIndex].title)")
         playSong(songs[targetIndex].id)
     }
 
