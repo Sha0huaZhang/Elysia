@@ -55,7 +55,7 @@ Apple Music 缺失的图形界面
 
 1. 从[Downloads（elysia.macwave.org/Downloads）](https://elysia.com/downloads)或 [Releases 页面](../../releases) 下载 `Elysia-x.y.z.dmg`。
 2. 打开 DMG，把 **Elysia** 拖到 **Applications** 快捷方式上。
-3. 从「应用程序」启动 Elysia，macOS 询问时允许它控制**「音乐」**。
+3. 从「应用程序」启动 Elysia，macOS 询问时允许它控制 **「音乐」**。
 
 ### 如果 macOS 拒绝打开
 
