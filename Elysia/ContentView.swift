@@ -48,6 +48,13 @@ struct ContentView: View {
     /// 乐观状态的时间戳，用于超时回滚
     @State private var pendingPlayStateTime: Date? = nil
 
+    /// 用户按下「上一首 / 下一首」或点选歌曲后，期望正在播放的那首歌。
+    /// nowPlayingID 靠轮询更新（500ms 一次），连按「下一首」时会一直以同一个旧歌
+    /// 为锚点，算出同一个目标，第二下看起来就没反应。这里把最近一次请求当作锚点。
+    @State private var pendingSongID: String? = nil
+    /// 上述请求的时间戳，用于超时放弃
+    @State private var pendingSongIDTime: Date? = nil
+
     @State private var songEndedHandled = false
 
     var body: some View {
@@ -128,6 +135,7 @@ struct ContentView: View {
                 // 搜索结果只是原列表的视图，拖动会打乱真实顺序，因此搜索时禁用
                 isReorderEnabled: !isSearching,
                 isSearching: isSearching,
+                onPlay: playSong,
                 onReorder: persistOrder
             )
         }
@@ -210,6 +218,18 @@ struct ContentView: View {
                 self.nowPlayingTitle = status.title
                 self.nowPlayingArtist = status.artist
 
+                // 用户请求的目标一旦被 Apple Music 采纳，锚点就完成使命；迟迟等不到
+                // 则超时放弃，免得锚点永久停在一首已被跳过的歌上。
+                if let pending = self.pendingSongID {
+                    if status.persistentID == pending {
+                        self.pendingSongID = nil
+                        self.pendingSongIDTime = nil
+                    } else if let t = self.pendingSongIDTime, Date().timeIntervalSince(t) > 2.0 {
+                        self.pendingSongID = nil
+                        self.pendingSongIDTime = nil
+                    }
+                }
+
                 // 处理乐观播放/暂停状态
                 if let expected = self.pendingPlayState {
                     if status.isPlaying == expected {
@@ -279,7 +299,7 @@ struct ContentView: View {
     private func handleSongEnded(endedID: String) {
         switch repeatMode {
         case .one:
-            MusicData.playSong(persistentID: endedID)
+            playSong(endedID)
         case .all:
             playOffset(1, fromID: endedID)
         case .off:
@@ -287,40 +307,34 @@ struct ContentView: View {
         }
     }
 
+    /// 播放指定歌曲，并记下乐观锚点。
+    ///
+    /// 顺序一律以 Elysia 自己的列表为准（含用户拖拽后的自定义顺序），不使用
+    /// Apple Music 的播放队列：一旦下发具体歌曲，后续「上一首 / 下一首」就都按
+    /// Elysia 的列表推算，与拖拽排序保持一致。
+    private func playSong(_ id: String) {
+        pendingSongID = id
+        pendingSongIDTime = Date()
+        MusicData.playSong(persistentID: id)
+    }
+
     private func playOffset(_ offset: Int, fromID: String? = nil, stopAtEnd: Bool = false) {
         guard !songs.isEmpty else { return }
 
-        let anchorID = fromID ?? nowPlayingID
-        let currentIndex: Int?
-        if let id = anchorID {
-            currentIndex = songs.firstIndex(where: { $0.id == id })
-        } else {
-            currentIndex = nil
-        }
+        // 锚点优先取本次调用显式指定的歌，其次是用户上一次请求的歌，最后才回落到
+        // 轮询值。少了中间这一层，连按就会重复算出同一个目标。
+        let anchorID = fromID ?? pendingSongID ?? nowPlayingID
+        let anchorIndex = anchorID.flatMap { id in songs.firstIndex { $0.id == id } }
 
-        var targetIndex: Int
-        if let current = currentIndex {
-            targetIndex = current + offset
-        } else {
-            targetIndex = offset > 0 ? 0 : songs.count - 1
-        }
+        guard let targetIndex = SongAdvance.targetIndex(
+            anchorIndex: anchorIndex,
+            count: songs.count,
+            offset: offset,
+            repeatAll: repeatMode == .all,
+            stopAtEnd: stopAtEnd
+        ) else { return }
 
-        if targetIndex < 0 {
-            if repeatMode == .all {
-                targetIndex = songs.count - 1
-            } else {
-                return
-            }
-        } else if targetIndex >= songs.count {
-            if repeatMode == .all && !stopAtEnd {
-                targetIndex = 0
-            } else {
-                return
-            }
-        }
-
-        let targetSong = songs[targetIndex]
-        MusicData.playSong(persistentID: targetSong.id)
+        playSong(songs[targetIndex].id)
     }
 
     private func cycleRepeatMode() {
@@ -683,6 +697,7 @@ struct SongListView: View {
     let isPlaying: Bool
     let isReorderEnabled: Bool
     let isSearching: Bool
+    let onPlay: (String) -> Void
     let onReorder: ([Song]) -> Void
 
     /// 正在拖动的歌曲 ID
@@ -737,6 +752,7 @@ struct SongListView: View {
                             isPlaying: song.id == nowPlayingID && isPlaying,
                             isDragging: draggingID == song.id,
                             isReorderEnabled: isReorderEnabled,
+                            onPlay: onPlay,
                             onDragChanged: { pointerY, startY, artwork in
                                 if draggingID != song.id {
                                     draggingID = song.id
@@ -880,6 +896,7 @@ struct SongRowView: View {
     let isPlaying: Bool
     let isDragging: Bool
     let isReorderEnabled: Bool
+    let onPlay: (String) -> Void
     let onDragChanged: (CGFloat, CGFloat, NSImage?) -> Void
     let onDragEnded: (CGFloat, CGFloat) -> Void
 
@@ -921,7 +938,7 @@ struct SongRowView: View {
 
             if isHovering, !isDragging {
                 Button(action: {
-                    MusicData.playSong(persistentID: song.id)
+                    onPlay(song.id)
                 }) {
                     Image(systemName: isPlaying ? "pause.fill" : "play.fill")
                         .font(.title2)
@@ -948,7 +965,7 @@ struct SongRowView: View {
             }
         }
         .onTapGesture(count: 2) {
-            MusicData.playSong(persistentID: song.id)
+            onPlay(song.id)
         }
         // 拖动与双击播放共存，互不抢占；搜索时不挂手势（原因见 ReorderDragModifier）
         .modifier(
