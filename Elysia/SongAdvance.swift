@@ -7,6 +7,15 @@ import Foundation
 // 顺序以 Elysia 自己的列表为准（含用户拖拽后的自定义顺序），不使用 Apple Music
 // 的播放队列；Elysia 未运行时才由 Apple Music 自己决定顺序。
 enum SongAdvance {
+    /// 没有已知锚点时的回落顺序：**现场问到的当前曲目优先于轮询缓存**。
+    ///
+    /// 这个顺序就是「下一首跳错歌」的分界线。轮询最长滞后半秒，而 Apple Music 会在
+    /// 曲末自己顺着资料库往下走；此时缓存值已经过期，用它推算会落到错的那一首，甚至
+    /// 在 Music 已经走得更远时往回跳。现场值则是按下这一刻问到的，与 Music 一致。
+    static func fallbackAnchor(live: String?, polled: String?) -> String? {
+        live ?? polled
+    }
+
     /// 算出「上一首 / 下一首」应落到的下标；返回 nil 表示不移动。
     ///
     /// - Parameters:

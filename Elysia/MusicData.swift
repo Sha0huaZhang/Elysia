@@ -156,6 +156,29 @@ enum MusicData {
         return PlayerStatus.parse(result)
     }
 
+    /// 现场读取当前正在播放曲目的 persistent ID（异步）。
+    ///
+    /// 与轮询缓存不同：按下「上一首 / 下一首」时现问现拿。轮询最长滞后半秒，而
+    /// Apple Music 会在曲末自己顺着资料库往下走，用滞后的值当锚点会把目标算错一首
+    /// ——表现就是「下一首」跳到不对的歌，甚至往回跳。
+    static func fetchCurrentTrackID() async -> String? {
+        await withCheckedContinuation { continuation in
+            scriptQueue.async {
+                let result = runAppleScriptSync("""
+                tell application "Music"
+                    try
+                        return persistent ID of current track
+                    on error
+                        return ""
+                    end try
+                end tell
+                """)
+                let trimmed = result.trimmingCharacters(in: .whitespacesAndNewlines)
+                continuation.resume(returning: trimmed.isEmpty ? nil : trimmed)
+            }
+        }
+    }
+
     /// 播放指定 persistent ID 的歌曲（异步）
     static func playSong(persistentID: String) {
         scriptQueue.async {

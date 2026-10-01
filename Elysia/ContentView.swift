@@ -332,7 +332,9 @@ struct ContentView: View {
                     self.takenOverAt = nil
                 }
 
-                if let id = status.persistentID, TrackEnd.shouldTakeOver(
+                // 刚拖动过进度条时不要接管：Music 的跳转脚本可能还没执行，这一轮读到的
+                // 仍是旧进度，会被误判成曲终而跳到下一首（表现同样是「跳错歌」）。
+                if let id = status.persistentID, self.pendingSeekTarget == nil, TrackEnd.shouldTakeOver(
                     remaining: remaining,
                     isPlaying: status.isPlaying,
                     secondsSinceTakeover: self.takenOverAt.map { Date().timeIntervalSince($0) }
@@ -377,12 +379,37 @@ struct ContentView: View {
         MusicData.playSong(persistentID: id)
     }
 
+    /// 上一首 / 下一首。
+    ///
+    /// 锚点顺序：本次显式指定 → 上一次请求的歌 → **现场向 Apple Music 询问当前在播
+    /// 哪首** → 轮询值。
+    ///
+    /// 中间那一步是关键。轮询最长滞后半秒，而 Apple Music 会在曲末自己顺着资料库
+    /// 往下走，此时缓存的 nowPlayingID 已经过期，用它推算就会跳到错的那一首（甚至
+    /// 往回跳）。所以按下的这一刻现问一次，确保锚点与 Music 的实际进度一致。
     private func playOffset(_ offset: Int, fromID: String? = nil, stopAtEnd: Bool = false) {
         guard !songs.isEmpty else { return }
 
-        // 锚点优先取本次调用显式指定的歌，其次是用户上一次请求的歌，最后才回落到
-        // 轮询值。少了中间这一层，连按就会重复算出同一个目标。
-        let anchorID = fromID ?? pendingSongID ?? nowPlayingID
+        if let anchorID = fromID ?? pendingSongID {
+            advance(offset: offset, anchorID: anchorID, stopAtEnd: stopAtEnd)
+            return
+        }
+
+        Task {
+            let live = await MusicData.fetchCurrentTrackID()
+            await MainActor.run {
+                advance(
+                    offset: offset,
+                    anchorID: SongAdvance.fallbackAnchor(live: live, polled: nowPlayingID),
+                    stopAtEnd: stopAtEnd
+                )
+            }
+        }
+    }
+
+    /// 按锚点算出目标歌并申请播放。顺序一律以 Elysia 自己的列表为准
+    /// （含用户拖拽后的自定义顺序），不使用 Apple Music 的播放队列。
+    private func advance(offset: Int, anchorID: String?, stopAtEnd: Bool) {
         let anchorIndex = anchorID.flatMap { id in songs.firstIndex { $0.id == id } }
 
         guard let targetIndex = SongAdvance.targetIndex(
