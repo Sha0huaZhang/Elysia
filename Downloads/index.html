@@ -42,7 +42,9 @@
             height: 75px;
             width: auto;
             display: block;
-            border-radius: 0;
+            /* 胶囊形：中间矩形、两端半圆（取高度的一半即 9999px 自动取半）
+               仅网页端显示效果，图片素材本身不变 */
+            border-radius: 9999px;
         }
 
         .logo-img.logo-3 {
@@ -69,9 +71,8 @@
             hyphens: auto;
         }
 
-        /* 两个按钮等宽：宽度由 flex 布局决定，而不是由文字长短决定，
-           否则英文界面下 "View On GitHub" 会比 "Download for macOS" 窄。
-           flex-basis 相同 + 同时收缩/伸展，因此宽度始终一致。 */
+        /* 宽度贴合文字：由脚本按「两个按钮中较宽的那个」统一设置，
+           因此两者等宽又不会在宽屏上被拉伸。 */
         .btn-github {
             display: inline-block;
             background-color: #99244F;
@@ -82,10 +83,9 @@
             font-weight: 600;
             font-size: 1.1rem;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
-            flex: 1 1 240px;
-            max-width: 280px;
             text-align: center;
             box-sizing: border-box;
+            white-space: nowrap;
         }
 
         .btn-github:hover {
@@ -605,6 +605,23 @@
                 btn.classList.toggle('active', btn.getAttribute('data-lang-set') === lang);
             });
             try { localStorage.setItem('elysia-lang', lang); } catch (e) {}
+            // 文字变了，按钮宽度需要重算（等一帧让显示切换生效）
+            if (typeof equalizeButtons === 'function') {
+                requestAnimationFrame(equalizeButtons);
+            }
+        }
+
+        // 顶部两个按钮等宽：取两者中较宽的那个作为统一宽度。
+        // 用脚本而不是 flex 拉伸，是因为拉伸会把按钮撑得比文字宽很多。
+        function equalizeButtons() {
+            const buttons = Array.from(document.querySelectorAll('.btn-github'))
+                .filter(function (b) { return b.offsetParent !== null; });
+            if (buttons.length < 2) return;
+            buttons.forEach(function (b) { b.style.minWidth = ''; });
+            const widest = Math.max.apply(null, buttons.map(function (b) {
+                return b.getBoundingClientRect().width;
+            }));
+            buttons.forEach(function (b) { b.style.minWidth = widest + 'px'; });
         }
 
         (function () {
@@ -615,6 +632,12 @@
                 saved = nav.indexOf('zh') === 0 ? 'zh' : 'en';
             }
             setLanguage(saved);
+            equalizeButtons();
+            window.addEventListener('resize', equalizeButtons);
+            // 字体加载完成后字宽会变，需要重算
+            if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(equalizeButtons);
+            }
         })();
     </script>
 
