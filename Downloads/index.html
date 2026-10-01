@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>Download Elysia</title>
     <style>
+        /* 正文栏宽度：各栏目标题下的横线要等长，就得让正文栏有确定宽度。
+           原先 .content-section 只有内联的 padding，宽度由最长段落撑开，随内容
+           浮动（实测 1069px），横线长度因此对不齐。1030px 正文 + 左右各 20px
+           padding = 1070px。 */
+        :root {
+            --content-column: 1070px;
+        }
+
         body {
             background-color: #F9D3E0;
             color: #99244F;
@@ -300,6 +308,13 @@
             opacity: 0.8;
         }
 
+        /* 正文栏本身要有确定宽度，横线长度才稳定 */
+        .content-section {
+            width: 100%;
+            max-width: var(--content-column);
+            box-sizing: border-box;
+        }
+
         /* 修改所有正文段落和标题的换行 */
         .content-section h2 {
             word-break: break-word;
@@ -450,15 +465,15 @@
         }
 
         /* ========== 下载按钮 ========== */
-        /* 标题下的横线要和下面各栏目的等长：撑满 body 内容宽，再左右各让出
-           20px，抵消 .content-section 的 padding。这样左右两端都与正文列对齐。
-           注意不能用 margin:auto，auto 外边距会取消 stretch。 */
+        /* 标题下的横线要和下面各栏目的等长。下面各栏目的横线撑满正文栏内容框，
+           即 --content-column 减去左右各 20px 的 padding，所以这里也用同一算式，
+           再用 auto 外边距居中，两端即与正文栏对齐。 */
         .download-heading {
             font-size: 1.8rem;
             border-bottom: 2px solid #E63B7A;
             padding-bottom: 10px;
-            align-self: stretch;
-            margin: 30px 20px 0;
+            width: calc(min(100%, var(--content-column)) - 40px);
+            margin: 30px auto 0;
             text-align: left;
             box-sizing: border-box;
         }
