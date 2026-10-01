@@ -58,6 +58,10 @@ struct ContentView: View {
     /// 上次「播完接管」的时刻。用来防止同一首被反复申请，兼作失败重试的计时。
     @State private var takenOverAt: Date? = nil
 
+    /// 已经提示过使用须知的版本号。按版本记录，所以更新后还会再提示一次，日常启动不打扰。
+    @AppStorage("promptedVersion") private var promptedVersion = ""
+    @State private var isShowingWelcome = false
+
     var body: some View {
         NavigationSplitView {
             SidebarView(selection: $selectedItem, searchText: $searchText)
@@ -65,6 +69,19 @@ struct ContentView: View {
             detailView
         }
         .frame(minWidth: 800, minHeight: 600)
+        // 首次安装或更新后提示一次使用须知
+        .onAppear {
+            isShowingWelcome = promptedVersion != AppVersion.current
+        }
+        .alert("welcome.title", isPresented: $isShowingWelcome) {
+            Button("common.gotIt") {
+                // 确认后才记录，避免弹窗未读就退出、下次不再提示
+                promptedVersion = AppVersion.current
+            }
+            .keyboardShortcut(.defaultAction)
+        } message: {
+            Text("welcome.message")
+        }
         .task(id: nowPlayingID) {
             await loadNowPlayingArtwork()
         }

@@ -68,6 +68,11 @@
 "settings.version.download"        = "Open Download Page";
 "settings.version.failed"          = "Could not reach GitHub. Check your connection and try again.";
 
+/* First-launch notice */
+"welcome.title"   = "Before You Start";
+"welcome.message" = "After a first install or an update, the song list may not be recognized. Open Settings → Library and press Refresh songs.\n\nRefreshing the song list, or restarting Elysia, is also needed every time your Apple Music library changes.\n\nIf it still does not work, quit Apple Music and try again.";
+"common.gotIt"    = "Got it";
+
 /* Shared */
 "common.cancel"  = "Cancel";
 "common.later"   = "Later";
