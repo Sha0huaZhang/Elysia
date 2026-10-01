@@ -98,6 +98,10 @@ between, then let go.
 **Change the language or restore the default song order** — open **Settings**
 in the sidebar and adjust it there.
 
+On first install, or after an update, the song list may not be recognized. Refresh
+it in **Settings → Library**. If that still does not work, quit Apple Music and
+repeat the step above.
+
 ## Build from source
 
 The Xcode project is generated from `project.yml` with [XcodeGen](https://github.com/yonaskolb/XcodeGen),
