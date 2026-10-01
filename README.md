@@ -12,6 +12,10 @@ The missing graphical interface of Apple Music
 ## Official Website 
 [elysia.macwave.org](https://elysia.macwave.org)  (Short link：[e.macwave.org](https://e.macwave.org))     
 
+## Download  
+
+[Click here to Downloads](https://elysia.macwave.org/Downloads)  
+
 ## Requirements
 
 - macOS Ventura (13) or later
