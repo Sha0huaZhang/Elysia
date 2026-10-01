@@ -5,7 +5,7 @@ The missing graphical interface of Apple Music.
 
 ## Requirements
 
-- macOS 13 or later
+- macOS Ventura13 and above
 - Apple Music with a library (Elysia drives the Music app, it does not play audio itself)
 
 ## Languages
