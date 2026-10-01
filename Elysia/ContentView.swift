@@ -135,6 +135,10 @@ struct ContentView: View {
                 onTogglePlayPause: { togglePlayPause() },
                 onSeek: { seconds in
                     MusicData.seek(to: seconds)
+                    // 关键：立刻把显示值也移到目标。否则松手瞬间 isDragging 变 false，
+                    // 显示值切回尚未更新的 position（旧位置），滑块先弹回去，等下一次
+                    // 轮询（最长 0.5s）才跳回来——看起来就是「跳一下」。
+                    position = seconds
                     pendingSeekTarget = seconds
                 },
                 onVolumeChange: { newVolume in
