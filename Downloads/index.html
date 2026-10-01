@@ -6,7 +6,7 @@
     <title>Download Elysia</title>
     <style>
         body {
-            background-color: #F4A4C0;
+            background-color: #F9D3E0;
             color: #99244F;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             display: flex;
@@ -20,16 +20,21 @@
             box-sizing: border-box;
         }
 
+        /* 顶部卡片：与主页保持一致，白边相比原来缩小 50%。
+           logo 高 50px；卡片高 70px -> 上下白边各 10px；
+           左右白边由 padding 决定，25px -> 12.5px。 */
         .logo-wrapper {
             background-color: #ffffff;
             border-radius: 30px;
-            padding: 12px 25px;
+            padding: 9px 12.5px;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 0;
             margin-bottom: 25px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            min-height: 70px;
+            box-sizing: border-box;
         }
 
         .logo-img {
@@ -317,8 +322,11 @@
                 display: block !important;
                 height: 42px;
             }
+            /* 移动端与主页一致：logo 高 42px，卡片高 61px -> 上下白边各 9.5px，左右 9px */
             .logo-wrapper {
-                padding: 4px 18px !important;
+                padding: 8px 9px !important;
+                min-height: 61px;
+                box-sizing: border-box;
             }
 
             .version-block .v-line {
