@@ -55,7 +55,8 @@ struct ContentView: View {
     /// 上述请求的时间戳，用于超时放弃
     @State private var pendingSongIDTime: Date? = nil
 
-    @State private var songEndedHandled = false
+    /// 上次「播完接管」的时刻。用来防止同一首被反复申请，兼作失败重试的计时。
+    @State private var takenOverAt: Date? = nil
 
     var body: some View {
         NavigationSplitView {
@@ -201,7 +202,9 @@ struct ContentView: View {
     private func startPolling() async {
         var tick = 0
         while !Task.isCancelled {
+            let fetchStart = Date()
             let status = await MusicData.fetchPlayerStatus()
+            let fetchSeconds = Date().timeIntervalSince(fetchStart)
 
             var newVolume: Double? = nil
             if tick % 4 == 0 {
@@ -209,11 +212,10 @@ struct ContentView: View {
             }
             tick += 1
 
-            await MainActor.run {
-                if status.isPlaying {
-                    self.songEndedHandled = false
-                }
+            // 接近曲末时轮询会加密，间隔由 TrackEnd 决定
+            var nextSleep: TimeInterval = TrackEnd.base
 
+            await MainActor.run {
                 self.nowPlayingID = status.persistentID
                 self.nowPlayingTitle = status.title
                 self.nowPlayingArtist = status.artist
@@ -287,12 +289,32 @@ struct ContentView: View {
                     }
                 }
 
-                if status.isStopped, let id = status.persistentID, !self.songEndedHandled {
-                    self.songEndedHandled = true
+                // 曲目快播完时主动接管，按 Elysia 自己的顺序申请下一首。
+                // 不能等 player state 变成 stopped：从资料库播放后 Music 会自己往下
+                // 播，状态一直是 playing，等到 stopped 时循环早就没生效了。
+                let remaining = status.duration > 0 ? status.duration - status.position : nil
+
+                // 离开曲末（重头播或换了歌）就作废上次接管记录，否则单曲循环只生效一次
+                if !status.isPlaying || remaining == nil || remaining! > TrackEnd.lead {
+                    self.takenOverAt = nil
+                }
+
+                if let id = status.persistentID, TrackEnd.shouldTakeOver(
+                    remaining: remaining,
+                    isPlaying: status.isPlaying,
+                    secondsSinceTakeover: self.takenOverAt.map { Date().timeIntervalSince($0) }
+                ) {
+                    self.takenOverAt = Date()
                     self.handleSongEnded(endedID: id)
                 }
+
+                nextSleep = TrackEnd.pollInterval(
+                    remaining: remaining,
+                    isPlaying: status.isPlaying,
+                    fetchSeconds: fetchSeconds
+                )
             }
-            try? await Task.sleep(nanoseconds: 500_000_000)
+            try? await Task.sleep(nanoseconds: UInt64(nextSleep * 1_000_000_000))
         }
     }
 
