@@ -132,21 +132,33 @@ enum MusicData {
     }
 
     private static func fetchPlayerStatusSync() -> PlayerStatus {
+        // 每个字段各自 try：只要有一个属性读不出来（资料库里确实存在这种读不出任何
+        // 属性的孤立条目），旧写法会让整个 try 跳到 on error，把 ID、曲名、歌手全部
+        // 清空，界面就显示「未在播放」——而歌其实还在放。分开 try 后可降级为局部缺失。
         let script = """
         tell application "Music"
+            set currentID to ""
+            set pos to 0
+            set dur to 0
+            set trackName to ""
+            set trackArtist to ""
+
             try
-                set currentID to persistent ID of current track
-                set pos to player position
-                set dur to duration of current track
-                set trackName to name of current track
-                set trackArtist to artist of current track
-            on error
-                set currentID to ""
-                set pos to 0
-                set dur to 0
-                set trackName to ""
-                set trackArtist to ""
+                set currentID to (persistent ID of current track) as text
             end try
+            try
+                set pos to player position
+            end try
+            try
+                set dur to duration of current track
+            end try
+            try
+                set trackName to (name of current track) as text
+            end try
+            try
+                set trackArtist to (artist of current track) as text
+            end try
+
             set stateStr to (player state as string)
             return currentID & "|||" & stateStr & "|||" & pos & "|||" & dur & "|||" & trackName & "|||" & trackArtist
         end tell
@@ -208,12 +220,16 @@ enum MusicData {
         }
     }
 
-    /// 强制把 Apple Music 的循环模式设为 off（启动时调用）
-    static func forceRepeatOff() {
+    /// 接管 Apple Music 的循环与随机设置（启动时调用）。
+    ///
+    /// 两项都必须由 Elysia 掌管：循环交给 Elysia 自己按它的列表实现；随机播放则会让
+    /// Music 自己往下走时挑随机的歌，与 Elysia 的顺序互相打架。启动时统一关掉。
+    static func forceSequentialPlayback() {
         scriptQueue.async {
             _ = runAppleScriptSync("""
             tell application "Music"
                 set song repeat to off
+                set shuffle enabled to false
             end tell
             """)
         }

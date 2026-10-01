@@ -55,12 +55,10 @@ struct ContentView: View {
     /// 上述请求的时间戳，用于超时放弃
     @State private var pendingSongIDTime: Date? = nil
 
-    /// 是否正处于「按下上一首/下一首 → 算出目标 → 申请播放」的过程中。
-    /// 用来在换曲在途时压住「播完接管」，避免两者互相打架。
-    @State private var isAdvancing = false
-
-    /// 上次「播完接管」的时刻。用来防止同一首被反复申请，兼作失败重试的计时。
-    @State private var takenOverAt: Date? = nil
+    /// 已排定接管的曲目，以及应当接管下一首的时刻。
+    /// 曲目开始时算一次，到点触发一次——不解读每次轮询的剩余时间，避免被滞后数据骗到。
+    @State private var armedTrackID: String? = nil
+    @State private var advanceDeadline: Date? = nil
 
     /// 已经提示过使用须知的版本号。按版本记录，所以更新后还会再提示一次，日常启动不打扰。
     @AppStorage("promptedVersion") private var promptedVersion = ""
@@ -90,7 +88,7 @@ struct ContentView: View {
             await loadNowPlayingArtwork()
         }
         .task {
-            MusicData.forceRepeatOff()
+            MusicData.forceSequentialPlayback()
             await loadSongs()
             let v = await MusicData.fetchVolume()
             await MainActor.run { self.volume = v }
@@ -326,39 +324,35 @@ struct ContentView: View {
                     }
                 }
 
-                // 曲目快播完时主动接管，按 Elysia 自己的顺序申请下一首。
-                // 不能等 player state 变成 stopped：从资料库播放后 Music 会自己往下
-                // 播，状态一直是 playing，等到 stopped 时循环早就没生效了。
-                let remaining = status.duration > 0 ? status.duration - status.position : nil
-
-                // 离开曲末（重头播或换了歌）就作废上次接管记录，否则单曲循环只生效一次
-                if !status.isPlaying || remaining == nil || remaining! > TrackEnd.lead {
-                    self.takenOverAt = nil
-                }
-
-                // 刚拖动过进度条时不要接管：Music 的跳转脚本可能还没执行，这一轮读到的
-                // 仍是旧进度，会被误判成曲终而跳到下一首（表现同样是「跳错歌」）。
+                // 曲目结束时接管，按 Elysia 自己的顺序申请下一首。
                 //
-                // 同理，正在换曲时也不能接管。按下「下一首」后 Music 尚未切过去，这一轮
-                // 轮询读到的还是旧歌的曲末进度（remaining≈0），会被误判成曲终，于是以
-                // 旧歌为锚点再算一次下一首，与刚才申请的目标互相打架——谁后执行就播谁，
-                // 表现就是「跳错歌且找不出规律」。
-                if let id = status.persistentID,
-                   !self.isAdvancing,
-                   self.pendingSongID == nil,
-                   self.pendingSeekTarget == nil,
-                   TrackEnd.shouldTakeOver(
-                       remaining: remaining,
-                       isPlaying: status.isPlaying,
-                       secondsSinceTakeover: self.takenOverAt.map { Date().timeIntervalSince($0) }
-                   ) {
-                    self.takenOverAt = Date()
-                    self.handleSongEnded(endedID: id)
+                // 用「曲目开始时算出的截止时刻」判断，而不是每轮解读剩余时间：后者会被
+                // 滞后的数据骗到（按下下一首后 Music 尚未切过去、刚拖动完进度条 Music 尚未
+                // 跳转，读到的都是旧歌的曲末进度），误判成曲终后以旧歌为锚点再算一次，与
+                // 刚才申请的目标互相打架，现象就是「跳错歌且找不出规律」。
+                //
+                // 换曲 / 跳转在途时不排定也不触发：此刻 Reported 的还是旧歌。
+                if self.pendingSongID != nil || self.pendingSeekTarget != nil || !status.isPlaying {
+                    self.advanceDeadline = nil
+                    self.armedTrackID = nil
+                } else if let id = status.persistentID {
+                    // 换了一首就（重新）排定
+                    if self.armedTrackID != id {
+                        self.armedTrackID = id
+                        self.advanceDeadline = TrackEnd.deadline(
+                            duration: status.duration,
+                            position: status.position
+                        )
+                    }
+                    if TrackEnd.isDue(deadline: self.advanceDeadline) {
+                        self.advanceDeadline = nil
+                        self.armedTrackID = nil
+                        self.handleSongEnded(endedID: id)
+                    }
                 }
 
-                nextSleep = TrackEnd.pollInterval(
-                    remaining: remaining,
-                    isPlaying: status.isPlaying,
+                nextSleep = TrackEnd.sleepInterval(
+                    until: self.advanceDeadline,
                     fetchSeconds: fetchSeconds
                 )
             }
@@ -408,9 +402,7 @@ struct ContentView: View {
             return
         }
 
-        // 现场询问 Music 期间也算「换曲在途」：这段时间里轮询读到的可能还是旧歌的
-        // 曲末进度，若不压住，播完接管会插进来按旧歌再算一次下一首。
-        isAdvancing = true
+        // 现场询问 Music 当前在播哪首，避免用滞后的轮询值当锚点
         Task {
             let live = await MusicData.fetchCurrentTrackID()
             await MainActor.run {
@@ -419,7 +411,6 @@ struct ContentView: View {
                     anchorID: SongAdvance.fallbackAnchor(live: live, polled: nowPlayingID),
                     stopAtEnd: stopAtEnd
                 )
-                isAdvancing = false
             }
         }
     }
