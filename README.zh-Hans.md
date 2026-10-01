@@ -17,11 +17,27 @@ Apple Music 缺失的图形界面。
 
 ## 为什么选择Elysia？
 
+**1.迎来清爽页面。** I.用专辑封面覆盖歌曲卡片左侧、增加识别效率。II.去掉了“广播”“iTunes”等不常用的侧边栏目和“类型”“评分”“播放次数”等状态栏。
+**2.优化界面结构。** I.将“艺人”栏目移至歌曲下方同时变为灰色和更小字体，便于阅读的同时兼顾美观。II.正在播放的歌曲的专辑封面边框变为红色、字体变为加粗的红色字体，同时进度条和音量调节条也为红色，增加辨识度。
+**3.AppleMusic没有的功能。** I.拖动歌曲可以调节顺序。
 
+**演示图片如下**
+**Apple Music：**  
+<p align="center">
+  <img src="images/compare1.png" alt="compare1" width="80%" style="max-width: 720px;">  
+<p align="center">
+  <img src="images/compare2.png" alt="compare2" width="80%" style="max-width: 720px;"> 
+**Elysia：**  
+</p>
+<p align="center">
+  <img src="images/compare3.png" alt="compare3" width="80%" style="max-width: 720px;">
+</p>  
+<p align="center">
+  <img src="images/compare4.png" alt="compare4" width="80%" style="max-width: 720px;"> 
 
 ## 安装
 
-1. 从 [Releases 页面](../../releases) 下载 `Elysia-x.y.z.dmg`。
+1. 从[官网（elysia.macwave.org/Downloads）](https://elysia.com/downloads)或 [Releases 页面](../../releases) 下载 `Elysia-x.y.z.dmg`。
 2. 打开 DMG，把 **Elysia** 拖到 **Applications** 快捷方式上。
 3. 从「应用程序」启动 Elysia，macOS 询问时允许它控制**「音乐」**。
 
