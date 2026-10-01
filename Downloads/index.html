@@ -450,30 +450,37 @@
         }
 
         /* ========== 下载按钮 ========== */
-        /* 「下载」小标题：与正文 h2 同款式，宽度与下方卡片对齐 */
+        /* 标题下的横线要和下面各栏目的等长：撑满 body 内容宽，再左右各让出
+           20px，抵消 .content-section 的 padding。这样左右两端都与正文列对齐。
+           注意不能用 margin:auto，auto 外边距会取消 stretch。 */
         .download-heading {
             font-size: 1.8rem;
             border-bottom: 2px solid #E63B7A;
             padding-bottom: 10px;
-            width: 75%;
-            margin: 30px auto 0;
+            align-self: stretch;
+            margin: 30px 20px 0;
             text-align: left;
             box-sizing: border-box;
         }
 
-        /* 下载卡片：居中，宽度占 75% 且不超过 560px，宽高比 4.5:1，
-           并限制最大高度，避免在宽窗口上被拉成一大块 */
+        /* 下载卡片：居中，宽度占 75% 且不超过 448px，宽高比 4.8:1，
+           并限制最大高度，避免在宽窗口上被拉成一大块。
+
+           图标/文字的上下留白 = (卡片高度 - 图标高度) / 2，padding 会被居中
+           吸收掉，改它看不出区别，只能靠降高度。原来 560px 宽、4.5:1，高
+           124.4px，图标(62px)上下各留 31.2px。现在宽减 20% 到 448px，高减
+           25% 到 93.3px，即 4.8:1，留白随之减半到 15.7px。 */
         .download-card {
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 20px;
             width: 75%;
-            max-width: 560px;
-            aspect-ratio: 4.5 / 1;
-            max-height: 128px;
+            max-width: 448px;
+            aspect-ratio: 4.8 / 1;
+            max-height: 94px;
             margin: 26px auto 0;
-            padding: 14px 22px;
+            padding: 7px 22px;
             background-color: #E63B7A;
             border-radius: 26px;
             text-decoration: none;
@@ -522,16 +529,15 @@
         /* 窄屏：卡片过扁会挤，改为更高更宽 */
         @media (max-width: 690.98px) {
             .download-heading {
-                width: 92%;
                 font-size: 1.5rem;
             }
             .download-card {
                 width: 92%;
                 max-width: none;
-                aspect-ratio: 3 / 1;
+                aspect-ratio: 4.5 / 1;
                 max-height: none;
                 gap: 12px;
-                padding: 12px 16px;
+                padding: 6px 16px;
                 border-radius: 18px;
             }
             .download-card-icon {
@@ -579,8 +585,8 @@
         <img src="../images/logo1.jpg" alt="" class="download-card-icon">
         <span class="download-card-text">
             <span class="download-card-name">Elysia-1.0.0.dmg</span>
-            <span class="download-card-size" data-lang="en">2.3 MB · click to download</span>
-            <span class="download-card-size" data-lang="zh">2.3 MB · 点击下载</span>
+            <span class="download-card-size" data-lang="en">2.4 MB · click to download</span>
+            <span class="download-card-size" data-lang="zh">2.4 MB · 点击下载</span>
         </span>
     </a>
 
