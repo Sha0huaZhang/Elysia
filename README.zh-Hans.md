@@ -1,6 +1,12 @@
+<div align="center">
+             <img src="docs/images/Elysia-icon-1024.png" alt="Logo" width="256" />
+             <h1>Elysia</h1>
+</div>  
+
+
 # Elysia
 
-Apple Music 缺失的图形界面。
+Apple Music 缺失的图形界面
 
 [English](./README.md) · **简体中文**
 
