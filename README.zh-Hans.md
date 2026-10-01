@@ -28,7 +28,7 @@ Apple Music 缺失的图形界面。
 <p align="center">
   <img src="images/compare2.png" alt="compare2" width="80%" style="max-width: 720px;"> 
     
-** Elysia：**  
+**Elysia：**  
 
 </p>
 <p align="center">
