@@ -9,6 +9,9 @@ The missing graphical interface of Apple Music
 
 **English** · [简体中文](./README.zh-Hans.md)
 
+## Official Website 
+(elysia.macwave.org)[https://elysia.macwave.org](Short link：(e.macwave.org)[https://e.macwave.org])    
+
 ## Requirements
 
 - macOS Ventura (13) or later
