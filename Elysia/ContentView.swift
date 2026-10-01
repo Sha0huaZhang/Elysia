@@ -35,6 +35,11 @@ struct ContentView: View {
 
     @State private var isDraggingVolume = false
     @State private var dragVolumeValue: Double = 0
+    /// 用户设定、等待 Apple Music 跟上的音量（乐观值）
+    @State private var pendingVolume: Double? = nil
+    @State private var pendingVolumeSince: Date? = nil
+    /// 上一次把音量下发给 Apple Music 的时间，用于限流
+    @State private var lastVolumeApply: Date = .distantPast
 
     @State private var pendingSeekTarget: Double? = nil
 
@@ -108,7 +113,10 @@ struct ContentView: View {
                     pendingSeekTarget = seconds
                 },
                 onVolumeChange: { newVolume in
-                    MusicData.setVolume(newVolume)
+                    applyVolumeWhileDragging(newVolume)
+                },
+                onVolumeCommit: { newVolume in
+                    commitVolume(newVolume)
                 }
             )
             Divider()
@@ -148,6 +156,31 @@ struct ContentView: View {
         }
         let image = await MusicData.fetchArtwork(persistentID: id)
         await MainActor.run { nowPlayingArtwork = image }
+    }
+
+    /// 拖动音量条时持续下发，但做限流：每次下发都是一次 AppleScript 调用，
+    /// 不加限流会堆积在串行队列里，反而更卡。末尾值由 commitVolume 保证。
+    private func applyVolumeWhileDragging(_ newValue: Double) {
+        // 界面立即跟随，避免依赖轮询
+        volume = newValue
+        pendingVolume = newValue
+        if pendingVolumeSince == nil { pendingVolumeSince = Date() }
+
+        let now = Date()
+        guard now.timeIntervalSince(lastVolumeApply) > 0.08 else { return }
+        lastVolumeApply = now
+        MusicData.setVolume(newValue)
+    }
+
+    /// 松手时下发最终值
+    private func commitVolume(_ newValue: Double) {
+        // 关键：同时更新显示值。否则松手后 isDraggingVolume 变 false，
+        // 滑块会读到尚未刷新的轮询值，先弹回旧位置再跳回来。
+        volume = newValue
+        pendingVolume = newValue
+        pendingVolumeSince = Date()
+        lastVolumeApply = Date()
+        MusicData.setVolume(newValue)
     }
 
     /// 重新读取资料库，用于用户在 Apple Music 中增删歌曲之后
@@ -214,8 +247,24 @@ struct ContentView: View {
                 }
                 self.duration = status.duration
 
-                if !self.isDraggingVolume, let v = newVolume {
-                    self.volume = v
+                // 音量：优先显示用户设定值，直到 Apple Music 跟上或超时
+                if let v = newVolume {
+                    let elapsed = self.pendingVolumeSince.map { Date().timeIntervalSince($0) } ?? 0
+                    switch VolumeSync.resolve(
+                        pending: self.pendingVolume,
+                        reported: v,
+                        dragging: self.isDraggingVolume,
+                        elapsed: elapsed
+                    ) {
+                    case .keepPending:
+                        self.volume = self.pendingVolume ?? v
+                    case .acceptReported(let value), .useReported(let value):
+                        self.pendingVolume = nil
+                        self.pendingVolumeSince = nil
+                        self.volume = value
+                    case .noChange:
+                        break
+                    }
                 }
 
                 if status.isStopped, let id = status.persistentID, !self.songEndedHandled {
@@ -422,6 +471,7 @@ struct PlayerControlBar: View {
     let onTogglePlayPause: () -> Void
     let onSeek: (Double) -> Void
     let onVolumeChange: (Double) -> Void
+    let onVolumeCommit: (Double) -> Void
 
     var body: some View {
         // 左右两侧块等宽，中间的正在播放信息因此精确居中，且不会与两侧重叠
@@ -494,12 +544,21 @@ struct PlayerControlBar: View {
                 ),
                 in: 0...100,
                 onEditingChanged: { editing in
-                    if !editing {
-                        onVolumeChange(dragVolumeValue)
+                    if editing {
+                        isDraggingVolume = true
+                    } else {
+                        // 松手：下发最终值并结束拖动状态
+                        onVolumeCommit(dragVolumeValue)
                         isDraggingVolume = false
                     }
                 }
             )
+            // 拖动过程中持续下发，音量实时跟随
+            .onChange(of: dragVolumeValue) { newValue in
+                if isDraggingVolume {
+                    onVolumeChange(newValue)
+                }
+            }
             .controlSize(.mini)
             .tint(.red)
             .frame(width: 80, height: 12)

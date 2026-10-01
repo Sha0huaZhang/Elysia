@@ -45,6 +45,47 @@ struct PlayerStatus {
     }
 }
 
+// MARK: - 音量同步
+//
+// Apple Music 的音量是异步生效的，而界面每两秒才轮询一次。松手后如果立刻
+// 改用轮询值，滑块会先弹回旧音量、再跳回新值。这里保留用户设定值，直到
+// Apple Music 跟上（或超时），从而避免这一跳。
+enum VolumeSync {
+    enum Outcome: Equatable {
+        /// 继续显示用户设定值
+        case keepPending
+        /// 采用 Apple Music 报告的值，并清除待同步状态
+        case acceptReported(Double)
+        /// 无待同步值，沿用报告值
+        case useReported(Double)
+        /// 没有新数据，保持现状
+        case noChange
+    }
+
+    static let tolerance: Double = 1.0
+    static let timeout: TimeInterval = 1.5
+
+    static func resolve(
+        pending: Double?,
+        reported: Double?,
+        dragging: Bool,
+        elapsed: TimeInterval,
+        tolerance: Double = VolumeSync.tolerance,
+        timeout: TimeInterval = VolumeSync.timeout
+    ) -> Outcome {
+        guard let reported else { return .noChange }
+
+        guard let pending else {
+            return dragging ? .noChange : .useReported(reported)
+        }
+
+        if abs(reported - pending) < tolerance {
+            return .acceptReported(reported)
+        }
+        return elapsed > timeout ? .acceptReported(reported) : .keepPending
+    }
+}
+
 // MARK: - 播放模式
 enum RepeatMode: String {
     case off = "off"
