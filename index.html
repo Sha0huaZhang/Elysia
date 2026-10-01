@@ -37,8 +37,9 @@
             box-sizing: border-box;
         }
 
+        /* 相比原来扩大 50%：高度 50px -> 75px（width: auto 保持长宽同比） */
         .logo-img {
-            height: 50px;
+            height: 75px;
             width: auto;
             display: block;
             border-radius: 0;
@@ -327,7 +328,8 @@
             }
             .logo-img.logo-3 {
                 display: block !important;
-                height: 42px;
+                /* 与桌面同样扩大 50%：42px -> 63px */
+                height: 63px;
             }
             /* 移动端同步缩小 50% 白边：logo 高 42px，
                卡片高 80px -> 61px（上下白边 19px -> 9.5px），左右 18px -> 9px */
