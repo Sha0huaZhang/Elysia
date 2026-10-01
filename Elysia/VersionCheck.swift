@@ -59,6 +59,21 @@ enum VersionCheck {
         if text.first == "v" || text.first == "V" { text.removeFirst() }
         return text
     }
+
+    /// 「有新版本 x.y.z」的成品文案。
+    ///
+    /// 显式按 key 取值，而不是写 `Text("settings.version.available \(latest)")`：
+    /// 字符串插值交给 SwiftUI 时，查找键会变成带占位符的
+    /// `settings.version.available %@`，与 .strings 里的键不一致，于是界面上会原样
+    /// 显示键名。这里自己取键、自己填充，行为确定。
+    static func availableMessage(
+        latest: String,
+        bundle: Bundle = .main,
+        table: String? = nil
+    ) -> String {
+        let format = bundle.localizedString(forKey: "settings.version.available", value: nil, table: table)
+        return String(format: format, latest)
+    }
 }
 
 // MARK: - 查询最新版本

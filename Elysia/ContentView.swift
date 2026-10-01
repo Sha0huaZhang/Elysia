@@ -1211,9 +1211,16 @@ struct SettingsView: View {
 
             case .updateAvailable(let latest):
                 VStack(alignment: .leading, spacing: 8) {
-                    Label("settings.version.available \(latest)", systemImage: "arrow.down.circle.fill")
-                        .font(.callout)
-                        .fontWeight(.semibold)
+                    // 不用 "settings.version.available \(latest)"：字符串插值会生成带
+                    // 占位符的查找键（settings.version.available %@），和 .strings 里的
+                    // 键对不上，查不到就原样显示键名。这里显式取值再用 %@ 填充。
+                    Label {
+                        Text(verbatim: VersionCheck.availableMessage(latest: latest))
+                    } icon: {
+                        Image(systemName: "arrow.down.circle.fill")
+                    }
+                    .font(.callout)
+                    .fontWeight(.semibold)
                     Text("settings.version.guide")
                         .font(.callout)
                         .foregroundStyle(.secondary)
