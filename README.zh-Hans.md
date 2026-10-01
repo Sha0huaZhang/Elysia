@@ -22,13 +22,13 @@ Apple Music 缺失的图形界面。
 **3.AppleMusic没有的功能。** I.拖动歌曲可以调节顺序。  
   
 **演示图片如下**  
-**Apple Music：**    
+**Elysia：**    
 <p align="center">
   <img src="images/compare1.png" alt="compare1" width="80%" style="max-width: 720px;">  
 <p align="center">
   <img src="images/compare2.png" alt="compare2" width="80%" style="max-width: 720px;"> 
     
-**Elysia：**  
+**Apple Music：**  
 
 </p>
 <p align="center">
