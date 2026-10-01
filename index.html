@@ -20,16 +20,21 @@
             box-sizing: border-box;
         }
 
+        /* 顶部卡片高度增加 1/5 —— 调整 padding 与 min-height 来增加高度 */
         .logo-wrapper {
             background-color: #ffffff;
             border-radius: 30px;
-            padding: 12px 25px;
+            /* 原来 padding: 12px 25px; 高度增加1/5，调整为 18px 25px，并配合 min-height */
+            padding: 18px 25px;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 0;
             margin-bottom: 25px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            /* 确保内部图片不会过于压缩，min-height 使整体高度明显提升 */
+            min-height: 90px; /* 原有效高度大约75左右，增加到90左右 */
+            box-sizing: border-box;
         }
 
         .logo-img {
@@ -317,8 +322,11 @@
                 display: block !important;
                 height: 42px;
             }
+            /* 移动端顶部卡片高度增加1/5 —— 调整padding与min-height */
             .logo-wrapper {
-                padding: 4px 18px !important;
+                padding: 16px 18px !important;
+                min-height: 80px; /* 移动端适当高度，比原来高约1/5 */
+                box-sizing: border-box;
             }
 
             .version-block .v-line {
@@ -441,6 +449,7 @@
         <button class="lang-btn" type="button" data-lang-set="zh" onclick="setLanguage('zh')">简体中文</button>
     </div>
 
+    <!-- 顶部卡片 logo-wrapper：高度已增加1/5（调整padding和min-height） -->
     <div class="logo-wrapper">
         <img src="images/logo1.jpg" alt="Elysia icon" class="logo-img logo-1">
         <img src="images/logo2.jpg" alt="Elysia" class="logo-img logo-2">
