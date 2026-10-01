@@ -11,7 +11,7 @@ Apple Music 缺失的图形界面
 [English](./README.md) · **简体中文**
 
 ## 官方网站  
-elysia.macwave.org（短链接：e.macwave.org）  
+(elysia.macwave.org)[https://elysia.macwave.org]（短链接：(e.macwave.org)[https://e.macwave.org]）  
 ## 系统要求
 
 - macOS Ventura13 或更高版本
@@ -53,7 +53,7 @@ elysia.macwave.org（短链接：e.macwave.org）
 
 ## 安装
 
-1. 从[官网（elysia.macwave.org/Downloads）](https://elysia.com/downloads)或 [Releases 页面](../../releases) 下载 `Elysia-x.y.z.dmg`。
+1. 从[Downloads（elysia.macwave.org/Downloads）](https://elysia.com/downloads)或 [Releases 页面](../../releases) 下载 `Elysia-x.y.z.dmg`。
 2. 打开 DMG，把 **Elysia** 拖到 **Applications** 快捷方式上。
 3. 从「应用程序」启动 Elysia，macOS 询问时允许它控制**「音乐」**。
 
