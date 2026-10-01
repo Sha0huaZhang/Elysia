@@ -71,7 +71,7 @@ xcodegen generate
 open Elysia.xcodeproj
 ```
 
-要在 `dist/` 下生成已签名、兼容 Intel 的通用版（arm64 + x86_64）DMG：
+要在 `dmg/` 下生成已签名、兼容 Intel 的通用版（arm64 + x86_64）DMG：
 
 ```sh
 Scripts/package-dmg.sh

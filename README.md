@@ -5,7 +5,7 @@ The missing graphical interface of Apple Music.
 
 ## Requirements
 
-- macOS Ventura13 and above
+- macOS Ventura (13) or later
 - Apple Music with a library (Elysia drives the Music app, it does not play audio itself)
 
 ## Languages
@@ -15,9 +15,46 @@ packs in `Elysia/en.lproj` and `Elysia/zh-Hans.lproj`. By default it follows the
 system language; **Settings → Language** overrides it, which takes effect after
 a restart.
 
+## Why Elysia?
+
+**1. A cleaner window.** i. Album artwork fills the left of every song row, so
+tracks are easier to pick out. ii. The seldom-used sidebar sections (Radio,
+iTunes) and the status columns (Genre, Rating, Plays) are gone.
+
+**2. A tidier layout.** i. The artist sits under the song title, in grey and a
+smaller size: easier to scan, and better looking. ii. The playing song's
+artwork is outlined in red and its text turns bold red, with the progress and
+volume sliders in red as well, so it is obvious at a glance.
+
+**3. What Apple Music does not do.** Drag songs to change their order, and
+restore the default order in one click.
+
+## Comparison
+
+**Elysia**
+
+<p align="center">
+  <img src="images/compare1.png" alt="Elysia" width="80%" style="max-width: 720px;">
+</p>
+
+<p align="center">
+  <img src="images/compare2.png" alt="Elysia" width="80%" style="max-width: 720px;">
+</p>
+
+**Apple Music**
+
+<p align="center">
+  <img src="images/compare3.png" alt="Apple Music" width="80%" style="max-width: 720px;">
+</p>
+
+<p align="center">
+  <img src="images/compare4.png" alt="Apple Music" width="80%" style="max-width: 720px;">
+</p>
+
 ## Install
 
-1. Download `Elysia-x.y.z.dmg` from the [releases page](../../releases).
+1. Download `Elysia-x.y.z.dmg` from the [website](https://elysia.com/downloads)
+   or the [releases page](../../releases).
 2. Open the DMG and drag **Elysia** onto the **Applications** shortcut.
 3. Launch Elysia from Applications and allow it to control **Music** when macOS asks.
 
@@ -35,6 +72,19 @@ developer. Either workaround is fine:
   xattr -dr com.apple.quarantine /Applications/Elysia.app
   ```
 
+## Usage
+
+**Play / pause** — double-click a song, or use the play/pause button.
+
+**Reorder songs** — drag a song between the two songs you want it to sit
+between, then let go.
+
+**Change the repeat mode** — use the playback-mode button at the top
+(off / repeat all / repeat one).
+
+**Change the language or restore the default song order** — open **Settings**
+in the sidebar and adjust it there.
+
 ## Build from source
 
 The Xcode project is generated from `project.yml` with [XcodeGen](https://github.com/yonaskolb/XcodeGen),
@@ -45,7 +95,7 @@ xcodegen generate
 open Elysia.xcodeproj
 ```
 
-To produce a signed, universal (arm64 + x86_64) DMG in `dist/`:
+To produce a signed, universal (arm64 + x86_64) DMG in `dmg/`:
 
 ```sh
 Scripts/package-dmg.sh
