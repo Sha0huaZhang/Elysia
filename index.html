@@ -33,7 +33,7 @@
             gap: 0;
             margin-bottom: 25px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            min-height: 70px;
+            min-height: 87.5px;
             box-sizing: border-box;
         }
 
@@ -68,6 +68,9 @@
             hyphens: auto;
         }
 
+        /* 两个按钮等宽：宽度由 flex 布局决定，而不是由文字长短决定，
+           否则英文界面下 "View On GitHub" 会比 "Download for macOS" 窄。
+           flex-basis 相同 + 同时收缩/伸展，因此宽度始终一致。 */
         .btn-github {
             display: inline-block;
             background-color: #99244F;
@@ -78,6 +81,10 @@
             font-weight: 600;
             font-size: 1.1rem;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
+            flex: 1 1 240px;
+            max-width: 280px;
+            text-align: center;
+            box-sizing: border-box;
         }
 
         .btn-github:hover {
@@ -326,7 +333,7 @@
                卡片高 80px -> 61px（上下白边 19px -> 9.5px），左右 18px -> 9px */
             .logo-wrapper {
                 padding: 8px 9px !important;
-                min-height: 61px;
+                min-height: 76.25px;
                 box-sizing: border-box;
             }
 
