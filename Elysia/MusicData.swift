@@ -19,19 +19,23 @@ struct PlayerStatus {
     let title: String?
     /// 当前曲目歌手
     let artist: String?
+    /// Apple Music 的循环模式（off / all / one）。随状态一起读取，
+    /// 使界面上的循环图标始终反映 Music 的真实状态，而不是 Elysia 自己的记忆。
+    let repeatRaw: String?
 
     static let idle = PlayerStatus(
         persistentID: nil, isPlaying: false, isStopped: true,
-        position: 0, duration: 0, title: nil, artist: nil
+        position: 0, duration: 0, title: nil, artist: nil, repeatRaw: nil
     )
 
     /// 解析状态脚本的 "|||" 分隔输出。
     ///
-    /// 字段顺序：persistentID、播放状态、进度、时长、曲名、歌手。
+    /// 字段顺序：persistentID、播放状态、进度、时长、曲名、歌手、循环模式。
+    /// 循环模式为后加字段，只有 6 段时按缺失处理（返回 nil 而不是整体失败）。
     /// 输出不符合预期时退回 `idle`，让界面显示为「未在播放」而不是崩溃。
     static func parse(_ output: String) -> PlayerStatus {
         let parts = output.components(separatedBy: "|||")
-        guard parts.count == 6 else { return .idle }
+        guard parts.count >= 6 else { return .idle }
 
         return PlayerStatus(
             persistentID: parts[0].isEmpty ? nil : parts[0],
@@ -40,7 +44,8 @@ struct PlayerStatus {
             position: Double(parts[2]) ?? 0,
             duration: Double(parts[3]) ?? 0,
             title: parts[4].isEmpty ? nil : parts[4],
-            artist: parts[5].isEmpty ? nil : parts[5]
+            artist: parts[5].isEmpty ? nil : parts[5],
+            repeatRaw: parts.count >= 7 && !parts[6].isEmpty ? parts[6] : nil
         )
     }
 }
@@ -160,7 +165,11 @@ enum MusicData {
             end try
 
             set stateStr to (player state as string)
-            return currentID & "|||" & stateStr & "|||" & pos & "|||" & dur & "|||" & trackName & "|||" & trackArtist
+            set repeatStr to ""
+            try
+                set repeatStr to (song repeat as text)
+            end try
+            return currentID & "|||" & stateStr & "|||" & pos & "|||" & dur & "|||" & trackName & "|||" & trackArtist & "|||" & repeatStr
         end tell
         """
 
@@ -220,10 +229,29 @@ enum MusicData {
         }
     }
 
+    /// 让 Apple Music 自己执行循环（单曲 / 列表）。
+    ///
+    /// 循环交给 Music 原生处理，Elysia 就不必在曲末抢时间动手，那一整类竞态（与 Music
+    /// 自己的曲末自动走歌互相打架）随之消失。Elysia 只负责在用户切换模式时下发一次。
+    ///
+    /// 注：`set song repeat to all` 让 Music 播到资料库末尾后回到开头继续，即列表循环；
+    /// `to one` 即单曲循环。
+    static func setRepeat(_ mode: RepeatMode) {
+        Diagnostics.log("下发循环模式 = \(mode.rawValue)")
+        scriptQueue.async {
+            let echo = runAppleScriptSync("""
+            tell application "Music"
+                set song repeat to \(mode.rawValue)
+                return song repeat as text
+            end tell
+            """)
+            Diagnostics.log("下发循环模式 \(mode.rawValue) 后，Music 回读 = \(echo.trimmingCharacters(in: .whitespacesAndNewlines))")
+        }
+    }
+
     /// 接管 Apple Music 的循环与随机设置（启动时调用）。
     ///
-    /// 两项都必须由 Elysia 掌管：循环交给 Elysia 自己按它的列表实现；随机播放则会让
-    /// Music 自己往下走时挑随机的歌，与 Elysia 的顺序互相打架。启动时统一关掉。
+    /// 随机播放必须关掉：它会让 Music 自己往下走时挑随机的歌，与 Elysia 的顺序互相打架。
     static func forceSequentialPlayback() {
         scriptQueue.async {
             _ = runAppleScriptSync("""

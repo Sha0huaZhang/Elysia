@@ -57,8 +57,6 @@ struct ContentView: View {
 
     /// 已排定接管的曲目，以及应当接管下一首的时刻。
     /// 曲目开始时算一次，到点触发一次——不解读每次轮询的剩余时间，避免被滞后数据骗到。
-    @State private var armedTrackID: String? = nil
-    @State private var advanceDeadline: Date? = nil
 
     /// 连续两次观察到同一首才算「稳定曲目」，用来当锚点。
     ///
@@ -98,6 +96,12 @@ struct ContentView: View {
         .task {
             Diagnostics.markSession()
             MusicData.forceSequentialPlayback()
+            // 接管 F7/F8/F9，走与界面按钮完全相同的逻辑
+            MediaKeys.install(
+                onPrevious: { playOffset(-1) },
+                onNext: { playOffset(1) },
+                onTogglePlayPause: { togglePlayPause() }
+            )
             await loadSongs()
             let v = await MusicData.fetchVolume()
             await MainActor.run { self.volume = v }
@@ -234,9 +238,7 @@ struct ContentView: View {
     private func startPolling() async {
         var tick = 0
         while !Task.isCancelled {
-            let fetchStart = Date()
             let status = await MusicData.fetchPlayerStatus()
-            let fetchSeconds = Date().timeIntervalSince(fetchStart)
 
             var newVolume: Double? = nil
             if tick % 4 == 0 {
@@ -245,7 +247,7 @@ struct ContentView: View {
             tick += 1
 
             // 接近曲末时轮询会加密，间隔由 TrackEnd 决定
-            var nextSleep: TimeInterval = TrackEnd.base
+            var nextSleep: TimeInterval = Polling.interval
 
             await MainActor.run {
                 // 在本轮改动 nowPlayingID 之前先判断曲目是否变了
@@ -254,6 +256,15 @@ struct ContentView: View {
                 self.nowPlayingID = status.persistentID
                 self.nowPlayingTitle = status.title
                 self.nowPlayingArtist = status.artist
+
+                // 把曲目发布给系统：认领「正在播放」位置后，F7/F8/F9 才会路由到 Elysia
+                MediaKeys.update(
+                    title: status.title,
+                    artist: status.artist,
+                    duration: status.duration,
+                    position: status.position,
+                    isPlaying: status.isPlaying
+                )
 
                 // 用户请求的目标一旦被 Apple Music 采纳，锚点就完成使命；迟迟等不到
                 // 则超时放弃，免得锚点永久停在一首已被跳过的歌上。
@@ -335,17 +346,9 @@ struct ContentView: View {
 
                 // 曲目结束时接管，按 Elysia 自己的顺序申请下一首。
                 //
-                // 用「曲目开始时算出的截止时刻」判断，而不是每轮解读剩余时间：后者会被
-                // 滞后的数据骗到（按下下一首后 Music 尚未切过去、刚拖动完进度条 Music 尚未
-                // 跳转，读到的都是旧歌的曲末进度），误判成曲终后以旧歌为锚点再算一次，与
-                // 刚才申请的目标互相打架，现象就是「跳错歌且找不出规律」。
-                //
-                // 换曲 / 跳转在途时不排定也不触发：此刻 Reported 的还是旧歌。
-                if self.pendingSongID != nil || self.pendingSeekTarget != nil || !status.isPlaying {
-                    self.advanceDeadline = nil
-                    self.armedTrackID = nil
-                } else if let id = status.persistentID {
-                    // 连续两轮观察到同一首才升级为「稳定曲目」
+                // 连续两轮观察到同一首才认可为「稳定曲目」，用作「下一首」的锚点。
+                // 切歌时 Music 会在几首之间来回报当前曲目，单次读数可能是过渡态。
+                if let id = status.persistentID {
                     if id == self.candidateTrackID {
                         if self.stableTrackID != id {
                             self.stableTrackID = id
@@ -357,41 +360,13 @@ struct ContentView: View {
                         }
                         self.candidateTrackID = id
                     }
-
-                    // 换了一首就（重新）排定
-                    if self.armedTrackID != id {
-                        Diagnostics.log("轮询观察到曲目=\(name(of: id)) dur=\(String(format: "%.1f", status.duration)) pos=\(String(format: "%.1f", status.position))")
-                        self.armedTrackID = id
-                        self.advanceDeadline = TrackEnd.deadline(
-                            duration: status.duration,
-                            position: status.position
-                        )
-                    }
-                    if TrackEnd.isDue(deadline: self.advanceDeadline) {
-                        Diagnostics.log("到点接管：\(name(of: id))")
-                        self.advanceDeadline = nil
-                        self.armedTrackID = nil
-                        self.handleSongEnded(endedID: id)
-                    }
                 }
 
-                nextSleep = TrackEnd.sleepInterval(
-                    until: self.advanceDeadline,
-                    fetchSeconds: fetchSeconds
-                )
+                // 循环已交给 Apple Music 原生执行，Elysia 不再于曲末接管，
+                // 因此这里没有任何与 Music 抢时间的动作。
+                nextSleep = Polling.interval
             }
-            try? await Task.sleep(nanoseconds: UInt64(nextSleep * 1_000_000_000))
-        }
-    }
-
-    private func handleSongEnded(endedID: String) {
-        switch repeatMode {
-        case .one:
-            playSong(endedID)
-        case .all:
-            playOffset(1, fromID: endedID)
-        case .off:
-            playOffset(1, fromID: endedID, stopAtEnd: true)
+            try? await Task.sleep(nanoseconds: Polling.sleepNanoseconds(nextSleep))
         }
     }
 
@@ -424,11 +399,11 @@ struct ContentView: View {
     /// 中间那一步是关键。轮询最长滞后半秒，而 Apple Music 会在曲末自己顺着资料库
     /// 往下走，此时缓存的 nowPlayingID 已经过期，用它推算就会跳到错的那一首（甚至
     /// 往回跳）。所以按下的这一刻现问一次，确保锚点与 Music 的实际进度一致。
-    private func playOffset(_ offset: Int, fromID: String? = nil, stopAtEnd: Bool = false) {
+    private func playOffset(_ offset: Int, fromID: String? = nil) {
         guard !songs.isEmpty else { return }
 
         if let anchorID = fromID ?? pendingSongID {
-            advance(offset: offset, anchorID: anchorID, stopAtEnd: stopAtEnd)
+            advance(offset: offset, anchorID: anchorID)
             return
         }
 
@@ -439,10 +414,8 @@ struct ContentView: View {
                 Diagnostics.log("按下 \(offset > 0 ? "下一首" : "上一首")：现场查询 Music = \(live.map { name(of: $0) } ?? "空")；稳定曲目 = \(stableTrackID.map { name(of: $0) } ?? "空")")
                 advance(
                     offset: offset,
-                    // 现场值优先；取不到时用「连续两轮确认过」的稳定曲目，
-                    // 而不是可能正处在过渡抖动中的单次读数。
-                    anchorID: SongAdvance.fallbackAnchor(live: live, polled: stableTrackID),
-                    stopAtEnd: stopAtEnd
+                    // 现场值与稳定值一致时用现场值；不一致时信稳定值（现场值可能读到过渡抖动）
+                    anchorID: SongAdvance.fallbackAnchor(live: live, polled: stableTrackID)
                 )
             }
         }
@@ -450,7 +423,7 @@ struct ContentView: View {
 
     /// 按锚点算出目标歌并申请播放。顺序一律以 Elysia 自己的列表为准
     /// （含用户拖拽后的自定义顺序），不使用 Apple Music 的播放队列。
-    private func advance(offset: Int, anchorID: String?, stopAtEnd: Bool) {
+    private func advance(offset: Int, anchorID: String?) {
         let anchorIndex: Int?
         if let id = anchorID {
             // 知道有歌在播、却不在 Elysia 的列表里（例如正在播 Apple Music 目录里的
@@ -470,8 +443,7 @@ struct ContentView: View {
             anchorIndex: anchorIndex,
             count: songs.count,
             offset: offset,
-            repeatAll: repeatMode == .all,
-            stopAtEnd: stopAtEnd
+            repeatAll: repeatMode == .all
         ) else {
             Diagnostics.log("advance 放弃：锚点下标 \(anchorIndex.map(String.init) ?? "无") offset=\(offset) 不产生目标")
             return
@@ -482,11 +454,16 @@ struct ContentView: View {
     }
 
     private func cycleRepeatMode() {
+        let previous = repeatMode
         switch repeatMode {
         case .off:  repeatMode = .all
         case .all:  repeatMode = .one
         case .one:  repeatMode = .off
         }
+        Diagnostics.log("点击循环按钮：本地 \(previous.rawValue) -> \(repeatMode.rawValue)")
+        // 循环由 Apple Music 原生执行，Elysia 只负责下发一次。
+        // 这样 Elysia 不必在曲末抢时间动手，也就不会与 Music 自己的曲末走歌互相打架。
+        MusicData.setRepeat(repeatMode)
     }
 
     /// 播放 / 暂停（按钮与空格键共用）
