@@ -32,34 +32,25 @@ enum TrackEnd {
     /// 临近截止时刻的最小睡眠，避免空转。
     static let minimum: TimeInterval = 0.05
 
-    /// 曲目开始（或跳转）后，算出应当动手的时刻。时长未知或所剩不足时返回 nil。
-    static func deadline(
-        duration: Double,
-        position: Double,
-        now: Date = Date()
-    ) -> Date? {
-        guard duration > 0 else { return nil }
-        let remaining = duration - position
-        guard remaining > lead else { return nil }
-        return now.addingTimeInterval(remaining - lead)
+    /// 是否该动手：剩余时间已不足 lead。
+    ///
+    /// 这里**不能**写成「算出截止时刻、再判断是否已到」的形式。那样写会在剩余时间不足
+    /// lead 时算不出截止时刻（返回 nil），于是判断恒为「未到」，接管永不触发——音乐照旧
+    /// 由 Music 的队列接管，表现为「自动播放乱跳」。直接判断剩余时间即可，且每轮都判，
+    /// 因此用户拖动进度条后也能立即对准。
+    static func shouldTakeOver(remaining: TimeInterval?, isPlaying: Bool) -> Bool {
+        guard isPlaying, let remaining else { return false }
+        return remaining <= lead
     }
 
-    /// 下一次轮询等多久：临近截止时刻就贴着它醒，避免 0.5 秒间隔错过窗口。
+    /// 下一次轮询等多久：临近曲末就贴着动手点醒，避免 0.5 秒间隔错过只有零点几秒的窗口。
     static func sleepInterval(
-        until deadline: Date?,
-        now: Date = Date(),
+        remaining: TimeInterval?,
+        isPlaying: Bool,
         fetchSeconds: TimeInterval = 0
     ) -> TimeInterval {
-        guard let deadline else { return base }
-        let delta = deadline.timeIntervalSince(now)
-        guard delta <= calmWindow else { return base }
-        return min(base, max(minimum, delta - fetchSeconds))
-    }
-
-    /// 是否已到动手时刻。
-    static func isDue(deadline: Date?, now: Date = Date()) -> Bool {
-        guard let deadline else { return false }
-        return now >= deadline
+        guard isPlaying, let remaining, remaining <= calmWindow else { return base }
+        return min(base, max(minimum, remaining - lead - fetchSeconds))
     }
 
     /// 把秒数换成纳秒，供 Task.sleep 使用。

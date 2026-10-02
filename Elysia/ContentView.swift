@@ -66,10 +66,6 @@ struct ContentView: View {
     @State private var candidateTrackID: String? = nil
     @State private var stableTrackID: String? = nil
 
-    /// 已排定接管的曲目，以及应当动手的时刻。循环由 Elysia 自己实现，需要在曲末前动手。
-    @State private var armedTrackID: String? = nil
-    @State private var advanceDeadline: Date? = nil
-
     /// 已经提示过使用须知的版本号。按版本记录，所以更新后还会再提示一次，日常启动不打扰。
     @AppStorage("promptedVersion") private var promptedVersion = ""
     @State private var isShowingWelcome = false
@@ -370,25 +366,21 @@ struct ContentView: View {
 
                 // 曲目结束时由 Elysia 接管（见 TrackEnd 的说明：Music 的循环对
                 // `play <track>` 启动的播放全部失效，必须自己处理）。
-                // 换曲 / 跳转在途时不排定也不触发：此刻读到的还是旧歌。
-                if self.pendingSongID != nil || self.pendingSeekTarget != nil || !status.isPlaying {
-                    self.advanceDeadline = nil
-                    self.armedTrackID = nil
-                } else if let id = status.persistentID {
-                    if self.armedTrackID != id {
-                        self.armedTrackID = id
-                        self.advanceDeadline = TrackEnd.deadline(duration: status.duration, position: status.position)
-                    }
-                    if TrackEnd.isDue(deadline: self.advanceDeadline) {
-                        self.advanceDeadline = nil
-                        self.armedTrackID = nil
-                        Diagnostics.log("曲末接管：\(name(of: id)) 模式=\(self.repeatMode.rawValue) pos=\(String(format: "%.1f", status.position))/\(String(format: "%.1f", status.duration))")
-                        self.handleTrackEnded(id)
-                    }
+                //
+                // 每轮都按当前进度判断，而不是每首歌只算一次。进度会变：用户拖动进度条
+                // 或跳转到别处之后，先前算出的时刻就过期了。每轮判断则始终对准。
+                // 换曲 / 跳转在途时不动手：此刻读到的是旧位置，据此判断会误触发。
+                let remaining = status.duration > 0 ? status.duration - status.position : nil
+                let inFlight = self.pendingSongID != nil || self.pendingSeekTarget != nil
+                if !inFlight, let id = status.persistentID,
+                   TrackEnd.shouldTakeOver(remaining: remaining, isPlaying: status.isPlaying) {
+                    Diagnostics.log("曲末接管：\(name(of: id)) 模式=\(self.repeatMode.rawValue) 剩余=\(String(format: "%.1f", remaining ?? -1))s")
+                    self.handleTrackEnded(id)
                 }
 
                 nextSleep = TrackEnd.sleepInterval(
-                    until: self.advanceDeadline,
+                    remaining: remaining,
+                    isPlaying: status.isPlaying,
                     fetchSeconds: fetchSeconds
                 )
             }
@@ -1270,7 +1262,9 @@ struct SettingsView: View {
 
             Section("settings.version") {
                 LabeledContent("settings.version.current") {
-                    Text(AppVersion.current)
+                    // 带上构建号：CFBundleVersion 由打包脚本写成构建时间戳，
+                    // 这样一眼能看出手上这份是哪次构建，避免装错包来回排查。
+                    Text("\(AppVersion.current) (\(AppVersion.build))")
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
                 }

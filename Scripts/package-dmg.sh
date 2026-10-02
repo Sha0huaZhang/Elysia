@@ -46,6 +46,13 @@ echo "==> signing identity: $SIGN_IDENTITY"
 # ---------------------------------------------------------------- build
 
 echo "==> building $APP_NAME (Release, universal)"
+
+# 构建号写成时间戳，便于分辨手上的包是哪一次构建的。
+# 界面「设置 → 版本信息」与日志开头都会显示它。
+# 用 yyyyMMddHHmm（纯数字，符合 CFBundleVersion 的格式要求）。
+BUILD_STAMP="${BUILD_STAMP:-$(date +%Y%m%d%H%M)}"
+echo "==> build stamp: $BUILD_STAMP"
+
 xcodebuild \
     -project "$REPO_ROOT/$APP_NAME.xcodeproj" \
     -scheme "$SCHEME" \
@@ -54,13 +61,15 @@ xcodebuild \
     ARCHS="arm64 x86_64" \
     ONLY_ACTIVE_ARCH=NO \
     CODE_SIGNING_ALLOWED=NO \
+    CURRENT_PROJECT_VERSION="$BUILD_STAMP" \
     clean build >/dev/null
 
 APP="$DERIVED_DATA/Build/Products/Release/$APP_NAME.app"
 [[ -d "$APP" ]] || { echo "error: build produced no app at $APP" >&2; exit 1; }
 
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
-echo "==> version: $VERSION"
+BUILD="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP/Contents/Info.plist")"
+echo "==> version: $VERSION (build $BUILD)"
 echo "==> architectures: $(lipo -archs "$APP/Contents/MacOS/$APP_NAME")"
 
 # ---------------------------------------------------------------- sign

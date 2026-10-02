@@ -6,6 +6,15 @@ enum AppVersion {
     static var current: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
     }
+
+    /// 构建号。打包时由 Scripts/package-dmg.sh 写成构建时间戳（yyyyMMddHHmm），
+    /// 让每一份内部构建都能被分辨，不必靠猜「装的是哪一版」。
+    static var build: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
+    }
+
+    /// 形如 "1.0.8 (202610021633)"，用于界面显示与日志
+    static var display: String { "\(current) (\(build))" }
 }
 
 // MARK: - 版本比较

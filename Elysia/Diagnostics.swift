@@ -44,6 +44,6 @@ enum Diagnostics {
     /// 起一个新会话，用横线隔开，便于定位本次复现
     static func markSession() {
         log("")
-        log("===== 启动 \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?") =====")
+        log("===== 启动 \(AppVersion.display) =====")
     }
 }
