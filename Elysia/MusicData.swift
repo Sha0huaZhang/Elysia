@@ -6,6 +6,16 @@ struct Song: Identifiable, Hashable {
     let id: String
     let title: String
     let artist: String
+    /// 这首歌在 Apple Music 资料库中的位置（1 起）。0 表示读不出位置。
+    ///
+    /// 用的是 Apple Music 自己给出的位置，不显示在界面上，但日志里的「第 N 位」和
+    /// ~/Library/Logs/Elysia-list.txt 里的位置都用它，因此核对时可以和 Apple Music 的
+    /// 列表逐行对上。资料库里读不出属性的坏条目会占掉一个位置却不出现在列表里，
+    /// 位置在那里就会出现空缺——空缺本身就是「这里少了一首」的提示。
+    let libraryPosition: Int
+
+    /// 日志里的位置标识，与诊断清单里的位置完全一致
+    var positionText: String { libraryPosition > 0 ? "第\(libraryPosition)位" : "位置未知" }
 }
 
 // MARK: - 播放状态
@@ -103,14 +113,35 @@ enum MusicData {
 
     private static let scriptQueue = DispatchQueue(label: "org.macwave.elysia.script")
 
-    /// 从 Apple Music 资料库获取所有歌曲
+    /// 从 Apple Music 资料库获取所有歌曲，按 Music 给出的位置排序。
+    ///
+    /// 不按 `track i` 逐个取：资料库里只要有一个读不出属性的坏条目，`count of tracks`
+    /// 就会少报一个（实测 129，实际有 130 个位置），按下标取既指不到排在最后的那首，
+    /// 又会让整张列表从坏条目处开始错位一格。改为枚举后读回 Music 自己给出的 `index`，
+    /// 位置就不依赖计数：坏条目自然留下一个空缺，并被自动跳过。
     static func fetchAllSongs() -> [Song] {
         let script = """
         tell application "Music"
             set songList to every track of library playlist 1
             set output to ""
             repeat with t in songList
-                set output to output & (persistent ID of t) & "|||" & (name of t) & "|||" & (artist of t) & "\n"
+                set pid to ""
+                set nm to ""
+                set ar to ""
+                set idx to 0
+                try
+                    set pid to (persistent ID of t)
+                end try
+                try
+                    set nm to (name of t)
+                end try
+                try
+                    set ar to (artist of t)
+                end try
+                try
+                    set idx to (index of t)
+                end try
+                set output to output & idx & "|||" & pid & "|||" & nm & "|||" & ar & "\n"
             end repeat
             return output
         end tell
@@ -118,10 +149,27 @@ enum MusicData {
 
         let result = runAppleScriptSync(script)
         var songs: [Song] = []
+        var unpositioned = 0
         for line in result.split(separator: "\n") {
             let parts = line.components(separatedBy: "|||")
-            guard parts.count == 3 else { continue }
-            songs.append(Song(id: parts[0], title: parts[1], artist: parts[2]))
+            guard parts.count == 4 else { continue }
+            // 坏条目连 persistent ID 都读不出，直接跳过（不放进列表）
+            let id = parts[1].trimmingCharacters(in: .whitespaces)
+            guard !id.isEmpty else { continue }
+
+            let position = Int(parts[0]) ?? 0
+            if position <= 0 { unpositioned += 1 }
+            songs.append(Song(id: id, title: parts[2], artist: parts[3], libraryPosition: position))
+        }
+
+        // 按 Music 的位置排序；位置读不出的排在最后，宁可位置不准也不要丢掉这首歌
+        songs.sort { a, b in
+            if a.libraryPosition == 0 { return false }
+            if b.libraryPosition == 0 { return true }
+            return a.libraryPosition < b.libraryPosition
+        }
+        if unpositioned > 0 {
+            Diagnostics.log("\(unpositioned) 首曲目读不出资料库位置，已放到列表末尾")
         }
         return songs
     }

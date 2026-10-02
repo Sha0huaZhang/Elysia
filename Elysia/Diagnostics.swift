@@ -46,4 +46,27 @@ enum Diagnostics {
         log("")
         log("===== 启动 \(AppVersion.display) =====")
     }
+
+    /// 列表清单文件位置
+    static var listURL: URL {
+        fileURL.deletingLastPathComponent().appendingPathComponent("Elysia-list.txt")
+    }
+
+    /// 把当前列表按位置写成清单。
+    ///
+    /// 位置就是 Apple Music 资料库中的位置，界面上显示的编号与日志里的「第 N 位」都用它，
+    /// 因此不必再用眼睛数界面上是第几行；也便于事后核对 Elysia 的顺序与 Apple Music 的
+    /// 顺序差在哪一首。每次读取资料库（启动、切回应用、手动刷新）都会重写一次。
+    static func dumpList(_ songs: [Song]) {
+        var text = "# Elysia 列表清单　共 \(songs.count) 首\n"
+        text += "# 位置就是 Apple Music 资料库中的位置\n"
+        text += "# 位置\t歌名\t歌手\tpersistent ID\n"
+        for song in songs {
+            let position = song.libraryPosition > 0 ? String(song.libraryPosition) : "未知"
+            text += "\(position)\t\(song.title)\t\(song.artist)\t\(song.id)\n"
+        }
+        queue.async {
+            try? text.data(using: .utf8)?.write(to: listURL)
+        }
+    }
 }

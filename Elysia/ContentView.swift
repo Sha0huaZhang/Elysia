@@ -187,6 +187,23 @@ struct ContentView: View {
         }
     }
 
+    /// 把这次读库的结果写进日志：曲目数、位置范围、按自定义顺序补位的新歌、
+    /// 以及被自动跳过的坏条目（表现为位置空缺）。
+    private func logLibraryRead(_ fetched: [Song]) {
+        let positions = fetched.map(\.libraryPosition).filter { $0 > 0 }.sorted()
+        var text = "读取资料库 \(fetched.count) 首，位置 \(positions.first ?? 0)..\(positions.last ?? 0)"
+        if let saved = orderStore.savedIDs {
+            text += "；其中 \(fetched.filter { !saved.contains($0.id) }.count) 首不在自定义顺序里，已插回资料库中的位置"
+        }
+        if let highest = positions.last {
+            let gaps = (1...highest).filter { !positions.contains($0) }
+            if !gaps.isEmpty {
+                text += "；位置 \(gaps.map(String.init).joined(separator: "、")) 的条目在资料库里读不出来，已自动跳过"
+            }
+        }
+        Diagnostics.log(text)
+    }
+
     /// 从 Apple Music 读取资料库，并套用已保存的顺序
     private func loadSongs() async {
         let fetched = await Task.detached(priority: .userInitiated) {
@@ -199,13 +216,8 @@ struct ContentView: View {
             self.isLoading = false
             self.isRefreshing = false
             self.lastRefreshed = Date()
-
-            if let saved = orderStore.savedIDs {
-                let known = Set(saved)
-                Diagnostics.log("读取资料库 \(fetched.count) 首；其中 \(fetched.filter { !known.contains($0.id) }.count) 首不在自定义顺序里，已插回资料库中的位置")
-            } else {
-                Diagnostics.log("读取资料库 \(fetched.count) 首（未使用自定义顺序）")
-            }
+            Diagnostics.dumpList(self.songs)
+            self.logLibraryRead(fetched)
         }
     }
 
@@ -278,9 +290,9 @@ struct ContentView: View {
                     if self.pendingSongID == newID {
                         // 自己请求的，随后会清掉 pendingSongID
                     } else if let pending = self.pendingSongID {
-                        Diagnostics.log("外部换曲：Elysia 请求的是 \(name(of: pending))，实际变为 \(name(of: newID))")
+                        Diagnostics.log("外部换曲：Elysia 请求的是 \(rowLabel(of: pending)) \(name(of: pending))，实际变为 \(rowLabel(of: newID)) \(name(of: newID))")
                     } else {
-                        Diagnostics.log("外部换曲：变为 \(name(of: newID))（Elysia 未请求换曲）")
+                        Diagnostics.log("外部换曲：变为 \(rowLabel(of: newID)) \(name(of: newID))（Elysia 未请求换曲）")
                     }
                 }
 
@@ -383,11 +395,11 @@ struct ContentView: View {
                     if id == self.candidateTrackID {
                         if self.stableTrackID != id {
                             self.stableTrackID = id
-                            Diagnostics.log("曲目稳定 = \(name(of: id))")
+                            Diagnostics.log("曲目稳定 = \(self.rowLabel(of: id)) \(self.name(of: id))")
                         }
                     } else {
                         if self.stableTrackID != id {
-                            Diagnostics.log("曲目候选 \(name(of: id))（上一候选 \(self.candidateTrackID.map { name(of: $0) } ?? "无")），等下一轮确认")
+                            Diagnostics.log("曲目候选 \(self.rowLabel(of: id)) \(self.name(of: id))（上一候选 \(self.candidateTrackID.map { self.name(of: $0) } ?? "无")），等下一轮确认")
                         }
                         self.candidateTrackID = id
                         // 曲目变了，之前确认过的稳定值已经过期，作废以免长期滞后一首
@@ -410,7 +422,7 @@ struct ContentView: View {
                 let canAct = self.repeatMode == .one || self.songs.contains { $0.id == status.persistentID }
                 let due = TrackEnd.shouldTakeOver(remaining: remaining, isPlaying: status.isPlaying)
                 if !inFlight, !cooling, let id = status.persistentID, canAct, due {
-                    Diagnostics.log("曲末接管：\(name(of: id)) 模式=\(self.repeatMode.rawValue) 剩余=\(String(format: "%.1f", remaining ?? -1))s")
+                    Diagnostics.log("曲末接管：\(self.rowLabel(of: id)) \(self.name(of: id)) 模式=\(self.repeatMode.rawValue) 剩余=\(String(format: "%.1f", remaining ?? -1))s")
                     self.takeoverBlockedUntil = Date().addingTimeInterval(2.0)
                     self.handleTrackEnded(id)
                 } else if due {
@@ -438,7 +450,7 @@ struct ContentView: View {
     /// Apple Music 的播放队列：一旦下发具体歌曲，后续「上一首 / 下一首」就都按
     /// Elysia 的列表推算，与拖拽排序保持一致。
     private func playSong(_ id: String) {
-        Diagnostics.log("playSong 申请播放 \(name(of: id))  id=\(id)")
+        Diagnostics.log("playSong 申请播放 \(rowLabel(of: id)) \(name(of: id))  id=\(id)")
         pendingSongID = id
         pendingSongIDTime = Date()
         // 进度条立刻归零，不等下一次轮询；同时丢弃属于上一首的跳转目标，
@@ -451,6 +463,11 @@ struct ContentView: View {
     /// 日志里显示歌名，便于人工核对（找不到就显示截断的 ID）
     private func name(of id: String) -> String {
         songs.first { $0.id == id }.map { "《\($0.title)》" } ?? "id:\(id.prefix(8))"
+    }
+
+    /// 日志里用位置标识曲目。位置与界面左侧显示的编号、诊断清单里的编号完全一致。
+    private func rowLabel(of id: String) -> String {
+        songs.first { $0.id == id }?.positionText ?? "不在歌单里"
     }
 
     /// 上一首 / 下一首。
@@ -510,11 +527,13 @@ struct ContentView: View {
             offset: offset,
             repeatAll: repeatMode == .all
         ) else {
-            Diagnostics.log("advance 放弃：锚点下标 \(anchorIndex.map(String.init) ?? "无") offset=\(offset) 不产生目标")
+            Diagnostics.log("advance 放弃：锚点 \(anchorIndex.map { "第\($0 + 1)行" } ?? "无") offset=\(offset) 不产生目标")
             return
         }
 
-        Diagnostics.log("advance offset=\(offset) 锚点#\(anchorIndex.map(String.init) ?? "无") \(anchorID.map { name(of: $0) } ?? "无") -> 目标#\(targetIndex) \(songs[targetIndex].title)")
+        let anchorText = anchorID.map { "\(rowLabel(of: $0)) \(name(of: $0))" } ?? "无"
+        let target = songs[targetIndex]
+        Diagnostics.log("advance offset=\(offset) 锚点 \(anchorText) -> 目标 \(rowLabel(of: target.id)) 《\(target.title)》")
         playSong(songs[targetIndex].id)
     }
 
@@ -1148,7 +1167,7 @@ struct SongRowView: View {
 
             if isHovering, !isDragging {
                 Button(action: {
-                    Diagnostics.log("行内播放按钮：《\(song.title)》")
+                    Diagnostics.log("行内播放按钮：\(song.positionText) 《\(song.title)》")
                     onPlay(song.id)
                 }) {
                     Image(systemName: isPlaying ? "pause.fill" : "play.fill")
@@ -1176,7 +1195,7 @@ struct SongRowView: View {
             }
         }
         .onTapGesture(count: 2) {
-            Diagnostics.log("双击行：《\(song.title)》")
+            Diagnostics.log("双击行：\(song.positionText) 《\(song.title)》")
             onPlay(song.id)
         }
         // 拖动与双击播放共存，互不抢占；搜索时不挂手势（原因见 ReorderDragModifier）
