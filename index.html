@@ -126,6 +126,15 @@
             font-weight: bold;
         }
 
+        /* 行内代码（如 project.yml）整体不拆分：一行放不下时整块挪到下一行，
+           而不是在「.」处断成两半。只有单块长过一整行时才允许断开，避免溢出。 */
+        code {
+            white-space: nowrap;
+            word-break: normal;
+            overflow-wrap: break-word;
+            hyphens: none;
+        }
+
         .copy-btn {
             position: absolute;
             top: 12px;
