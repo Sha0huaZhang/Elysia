@@ -229,39 +229,45 @@ enum MusicData {
         }
     }
 
-    /// 让 Apple Music 自己执行循环（单曲 / 列表）。
+    /// 启动时把 Music 的循环与随机都关掉。
     ///
-    /// 循环交给 Music 原生处理，Elysia 就不必在曲末抢时间动手，那一整类竞态（与 Music
-    /// 自己的曲末自动走歌互相打架）随之消失。Elysia 只负责在用户切换模式时下发一次。
+    /// Elysia 自己实现循环（Music 的循环对 `play <track>` 启动的播放本来就失效），
+    /// 随机播放则会让 Music 自己往下走时挑随机的歌。两者都关掉，Music 就只在 Elysia
+    /// 明确申请时才换曲。
     ///
-    /// 注：`set song repeat to all` 让 Music 播到资料库末尾后回到开头继续，即列表循环；
-    /// `to one` 即单曲循环。
-    static func setRepeat(_ mode: RepeatMode) {
-        Diagnostics.log("下发循环模式 = \(mode.rawValue)")
-        scriptQueue.async {
-            let echo = runAppleScriptSync("""
-            tell application "Music"
-                set song repeat to \(mode.rawValue)
-                return song repeat as text
-            end tell
-            """)
-            Diagnostics.log("下发循环模式 \(mode.rawValue) 后，Music 回读 = \(echo.trimmingCharacters(in: .whitespacesAndNewlines))")
-        }
-    }
-
-    /// 启动时只关掉随机播放。
-    ///
-    /// 随机播放会让 Music 自己往下走时挑随机的歌，与 Elysia 的顺序互相打架，必须关。
-    ///
-    /// 这里**不设置循环模式**。原先启动时会把 `song repeat` 强制设为 off，但那是异步的：
-    /// 若用户在启动后立刻点循环按钮，点击会排在它前面下发，随后被它覆盖回去——表现为
-    /// 「怎么点都像没开」。现在启动不写循环，改为由界面在第一次读到 Music 的循环模式时
-    /// 采纳它（见 ContentView），两侧从一开始就同步，也不存在覆盖用户操作的窗口。
-    static func disableShuffle() {
+    /// 这里写 Music 不会影响界面：循环模式是 Elysia 自己的状态，不读 Music 的值，
+    /// 因此不存在「启动写入覆盖用户点击」的问题。
+    static func forceSequentialPlayback() {
         scriptQueue.async {
             _ = runAppleScriptSync("""
             tell application "Music"
+                set song repeat to off
                 set shuffle enabled to false
+            end tell
+            """)
+        }
+    }
+
+    /// 把播放头绕回开头（单曲循环用）。
+    ///
+    /// 不重新申请播放，而是让同一首从头继续：这样 Music 永远到不了曲末，也就不会触发
+    /// 它自己的队列推进。实测在 repeat=off 下也能稳稳在同一首上继续。
+    static func wrapToStart() {
+        scriptQueue.async {
+            _ = runAppleScriptSync("""
+            tell application "Music"
+                set player position to 0
+            end tell
+            """)
+        }
+    }
+
+    /// 暂停（不循环模式播到最后一首时使用）
+    static func pause() {
+        scriptQueue.async {
+            _ = runAppleScriptSync("""
+            tell application "Music"
+                pause
             end tell
             """)
         }
