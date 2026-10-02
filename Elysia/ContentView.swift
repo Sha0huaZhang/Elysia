@@ -377,14 +377,22 @@ struct ContentView: View {
                 let remaining = status.duration > 0 ? status.duration - status.position : nil
                 let inFlight = self.pendingSongID != nil || self.pendingSeekTarget != nil
                 let cooling = self.takeoverBlockedUntil.map { Date() < $0 } ?? false
+
                 // 单曲循环不依赖歌单；列表循环 / 不循环必须能查到当前曲目才算得出下一首，
                 // 因此歌单尚未读完时要明确跳过（并记录），否则会静默失效、被 Music 队列接走。
                 let canAct = self.repeatMode == .one || self.songs.contains { $0.id == status.persistentID }
-                if !inFlight, !cooling, let id = status.persistentID, canAct,
-                   TrackEnd.shouldTakeOver(remaining: remaining, isPlaying: status.isPlaying) {
+                let due = TrackEnd.shouldTakeOver(remaining: remaining, isPlaying: status.isPlaying)
+                if !inFlight, !cooling, let id = status.persistentID, canAct, due {
                     Diagnostics.log("曲末接管：\(name(of: id)) 模式=\(self.repeatMode.rawValue) 剩余=\(String(format: "%.1f", remaining ?? -1))s")
                     self.takeoverBlockedUntil = Date().addingTimeInterval(2.0)
                     self.handleTrackEnded(id)
+                } else if due {
+                    // 到了该动手的时候却没动手：把原因记下来，免得只能靠猜
+                    var why: [String] = []
+                    if inFlight { why.append("有切歌/跳转在途") }
+                    if cooling { why.append("冷却中") }
+                    if !canAct { why.append(self.songs.isEmpty ? "歌单还没读完" : "当前曲不在歌单里") }
+                    Diagnostics.log("该接管却跳过：\(why.joined(separator: "、"))")
                 }
 
                 nextSleep = TrackEnd.sleepInterval(
