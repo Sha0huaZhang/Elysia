@@ -248,11 +248,11 @@ enum MusicData {
         }
     }
 
-    /// 把播放头绕回开头（单曲循环用）。
+    /// 把当前曲目从头重播（单曲循环用）。
     ///
-    /// 不重新申请播放，而是让同一首从头继续：这样 Music 永远到不了曲末，也就不会触发
-    /// 它自己的队列推进。实测在 repeat=off 下也能稳稳在同一首上继续。
-    static func wrapToStart() {
+    /// 不能用「重新申请同一首」代替：`play <正在播放的曲目>` 是空操作，不会重新开始，
+    /// 于是下一轮轮询仍看到听到曲末，会反复申请，最终被 Music 的队列接走（已实测）。
+    static func restartCurrentTrack() {
         scriptQueue.async {
             _ = runAppleScriptSync("""
             tell application "Music"

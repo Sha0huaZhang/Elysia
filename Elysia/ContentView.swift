@@ -11,6 +11,10 @@ struct ContentView: View {
     @State private var songs: [Song] = []
     @State private var isLoading = true
     @State private var repeatMode: RepeatMode = .off
+
+    /// 接管后的冷却截止时间。脚本是异步下发的，下一轮轮询可能还没看到效果而重复触发，
+    /// 造成反复申请（实测出现同一首 0.07 秒内申请 5 次）。冷却可挡住这类重复。
+    @State private var takeoverBlockedUntil: Date? = nil
     @State private var selectedItem: SidebarItem? = .songs
     /// 侧边栏搜索框的文字
     @State private var searchText = ""
@@ -372,9 +376,14 @@ struct ContentView: View {
                 // 换曲 / 跳转在途时不动手：此刻读到的是旧位置，据此判断会误触发。
                 let remaining = status.duration > 0 ? status.duration - status.position : nil
                 let inFlight = self.pendingSongID != nil || self.pendingSeekTarget != nil
-                if !inFlight, let id = status.persistentID,
+                let cooling = self.takeoverBlockedUntil.map { Date() < $0 } ?? false
+                // 单曲循环不依赖歌单；列表循环 / 不循环必须能查到当前曲目才算得出下一首，
+                // 因此歌单尚未读完时要明确跳过（并记录），否则会静默失效、被 Music 队列接走。
+                let canAct = self.repeatMode == .one || self.songs.contains { $0.id == status.persistentID }
+                if !inFlight, !cooling, let id = status.persistentID, canAct,
                    TrackEnd.shouldTakeOver(remaining: remaining, isPlaying: status.isPlaying) {
                     Diagnostics.log("曲末接管：\(name(of: id)) 模式=\(self.repeatMode.rawValue) 剩余=\(String(format: "%.1f", remaining ?? -1))s")
+                    self.takeoverBlockedUntil = Date().addingTimeInterval(2.0)
                     self.handleTrackEnded(id)
                 }
 
@@ -483,12 +492,13 @@ struct ContentView: View {
 
     /// 曲末接管：按当前模式决定下一步。
     ///
-    /// 单曲循环用「把播放头绕回开头」，让同一首从头继续——Music 永远到不了曲末，因此
-    /// 连申请都不需要，不会与它的队列推进相撞。其余两种模式需要在曲末前申请目标曲目。
+    /// 单曲循环用「把播放头绕回开头」（`play` 同一首是空操作，不会重新开始）；
+    /// 其余两种模式申请目标曲目。
     private func handleTrackEnded(_ id: String) {
         switch repeatMode {
         case .one:
-            MusicData.wrapToStart()
+            // 单曲循环不需要歌单，因此启动后资料库尚未读完时也能正常工作
+            MusicData.restartCurrentTrack()
         case .all:
             playOffset(1, fromID: id)
         case .off:
