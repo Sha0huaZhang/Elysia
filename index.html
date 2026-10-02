@@ -730,7 +730,7 @@
             const pre = btn.parentElement.querySelector('pre');
             if (!pre) return;
             let text = pre.textContent;
-            text = text.replace(/^\$\s/, '');
+            text = text.replace(/^\$\s/gm, '');
             navigator.clipboard.writeText(text).then(() => {
                 btn.classList.add('copied');
                 setTimeout(() => {
