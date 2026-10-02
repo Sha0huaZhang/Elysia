@@ -111,6 +111,11 @@ struct ContentView: View {
             await MainActor.run { self.volume = v }
             await startPolling()
         }
+        // 在 Apple Music 里增删歌曲后，切回 Elysia 立即重新读取，新歌直接出现在
+        // 它在资料库中的位置，不必等到下次启动
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            refreshLibrary()
+        }
     }
 
     // MARK: - 侧边栏栏目对应的详情内容
@@ -194,6 +199,13 @@ struct ContentView: View {
             self.isLoading = false
             self.isRefreshing = false
             self.lastRefreshed = Date()
+
+            if let saved = orderStore.savedIDs {
+                let known = Set(saved)
+                Diagnostics.log("读取资料库 \(fetched.count) 首；其中 \(fetched.filter { !known.contains($0.id) }.count) 首不在自定义顺序里，已插回资料库中的位置")
+            } else {
+                Diagnostics.log("读取资料库 \(fetched.count) 首（未使用自定义顺序）")
+            }
         }
     }
 
@@ -258,6 +270,19 @@ struct ContentView: View {
             await MainActor.run {
                 // 在本轮改动 nowPlayingID 之前先判断曲目是否变了
                 let trackChanged = status.persistentID != self.nowPlayingID
+
+                // 曲目变了，但不是 Elysia 刚请求的那一首 —— 说明是外部改的
+                // （Apple Music 自己的队列、或在 Music 窗口里的操作）。
+                // 这类换曲 Elysia 无从阻止，但必须能看出来，否则「跳错歌」只能靠猜。
+                if trackChanged, let newID = status.persistentID {
+                    if self.pendingSongID == newID {
+                        // 自己请求的，随后会清掉 pendingSongID
+                    } else if let pending = self.pendingSongID {
+                        Diagnostics.log("外部换曲：Elysia 请求的是 \(name(of: pending))，实际变为 \(name(of: newID))")
+                    } else {
+                        Diagnostics.log("外部换曲：变为 \(name(of: newID))（Elysia 未请求换曲）")
+                    }
+                }
 
                 self.nowPlayingID = status.persistentID
                 self.nowPlayingTitle = status.title
@@ -1123,6 +1148,7 @@ struct SongRowView: View {
 
             if isHovering, !isDragging {
                 Button(action: {
+                    Diagnostics.log("行内播放按钮：《\(song.title)》")
                     onPlay(song.id)
                 }) {
                     Image(systemName: isPlaying ? "pause.fill" : "play.fill")
@@ -1150,6 +1176,7 @@ struct SongRowView: View {
             }
         }
         .onTapGesture(count: 2) {
+            Diagnostics.log("双击行：《\(song.title)》")
             onPlay(song.id)
         }
         // 拖动与双击播放共存，互不抢占；搜索时不挂手势（原因见 ReorderDragModifier）

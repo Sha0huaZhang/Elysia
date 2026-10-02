@@ -4,8 +4,8 @@ import Foundation
 ///
 /// Only persistent IDs are stored: the library stays the single source of truth
 /// for the songs themselves. This keeps the saved order valid when the library
-/// changes — songs that were removed are dropped, and songs that appear later
-/// are appended in library order.
+/// changes — songs that were removed are dropped, and songs that appear later go
+/// back to the position the library gives them.
 struct SongOrderStore {
     private static let defaultKey = "org.macwave.elysia.songOrder"
 
@@ -35,25 +35,53 @@ struct SongOrderStore {
     }
 
     /// Applies the saved order to a freshly fetched library listing.
+    ///
+    /// Songs the saved order does not mention are put back where the library has
+    /// them — directly after the nearest preceding song the user did arrange —
+    /// instead of being parked at the bottom of the list. The bottom is not where
+    /// the library puts a new song, so parking it there made 「下一首」 skip past
+    /// the song the library actually has in between.
     func apply(to librarySongs: [Song]) -> [Song] {
         guard let savedIDs else { return librarySongs }
 
-        var remaining = [String: Song](minimumCapacity: librarySongs.count)
-        for song in librarySongs {
-            remaining[song.id] = song
+        var libraryByID: [String: Song] = [:]
+        libraryByID.reserveCapacity(librarySongs.count)
+        for song in librarySongs where libraryByID[song.id] == nil {
+            libraryByID[song.id] = song
         }
+        let savedSet = Set(savedIDs)
 
+        // 用户排列过的曲目，按保存的顺序；已从资料库移除的自然被丢掉
+        var seen = Set<String>()
         var ordered: [Song] = []
-        ordered.reserveCapacity(librarySongs.count)
-        for id in savedIDs {
-            if let song = remaining.removeValue(forKey: id) {
-                ordered.append(song)
+        for id in savedIDs where seen.insert(id).inserted {
+            if let song = libraryByID[id] { ordered.append(song) }
+        }
+        // 保存的顺序与资料库已经对不上时，直接退回资料库顺序
+        guard !ordered.isEmpty else { return librarySongs }
+
+        // 保存顺序里没有的曲目：跟在「它前面最近的一首已排列曲目」之后；
+        // 排在所有已排列曲目之前的，放在列表最前
+        var arrivals: [String: [Song]] = [:]
+        var leading: [Song] = []
+        var anchor: String? = nil
+        for song in librarySongs {
+            if savedSet.contains(song.id) {
+                anchor = song.id
+            } else if let previousAnchor = anchor {
+                arrivals[previousAnchor, default: []].append(song)
+            } else {
+                leading.append(song)
             }
         }
-        for song in librarySongs where remaining[song.id] != nil {
-            ordered.append(song)
+
+        var result = leading
+        result.reserveCapacity(librarySongs.count)
+        for song in ordered {
+            result.append(song)
+            result.append(contentsOf: arrivals[song.id] ?? [])
         }
-        return ordered
+        return result
     }
 }
 
