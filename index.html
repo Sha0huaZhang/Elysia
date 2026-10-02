@@ -634,6 +634,65 @@
             <pre><span class="code-dollar">$</span> Scripts/package-dmg.sh</pre>
         </div>
 
+        <div data-lang="en">
+            <h3 style="font-size: 1.3rem; margin-top: 30px; margin-bottom: 10px;">Looking at a packaged image</h3>
+            <p style="font-size: 1.1rem; line-height: 1.6; opacity: 0.9;">
+                <code style="background-color: #99244F; color: #ffffff; padding: 2px 6px; border-radius: 4px;">Scripts/elysiadmgrun</code> mounts a packaged image and opens it in Finder, which is the quickest way to check the install experience:
+            </p>
+            <div class="code-container has-copy-btn">
+                <button class="copy-btn" onclick="copyCode(this)">
+                    <div class="copy-icon">
+                        <div class="square-back"></div>
+                        <div class="square-front"></div>
+                    </div>
+                </button>
+                <pre><span class="code-dollar">$</span> Scripts/elysiadmgrun              # newest image in dmg/
+<span class="code-dollar">$</span> Scripts/elysiadmgrun path.dmg     # a specific image
+<span class="code-dollar">$</span> Scripts/elysiadmgrun --eject      # eject it again</pre>
+            </div>
+            <p style="font-size: 1.1rem; line-height: 1.6; opacity: 0.9;">
+                To have it as a command, link it somewhere on your <code style="background-color: #99244F; color: #ffffff; padding: 2px 6px; border-radius: 4px;">PATH</code>:
+            </p>
+            <div class="code-container has-copy-btn">
+                <button class="copy-btn" onclick="copyCode(this)">
+                    <div class="copy-icon">
+                        <div class="square-back"></div>
+                        <div class="square-front"></div>
+                    </div>
+                </button>
+                <pre><span class="code-dollar">$</span> ln -s "$PWD/Scripts/elysiadmgrun" ~/.local/bin/elysiadmgrun</pre>
+            </div>
+        </div>
+        <div data-lang="zh">
+            <h3 style="font-size: 1.3rem; margin-top: 30px; margin-bottom: 10px;">查看打包好的镜像</h3>
+            <p style="font-size: 1.1rem; line-height: 1.6; opacity: 0.9;">
+                <code style="background-color: #99244F; color: #ffffff; padding: 2px 6px; border-radius: 4px;">Scripts/elysiadmgrun</code> 会挂载镜像并在 Finder 中打开，是检查安装体验最快的方式：
+            </p>
+            <div class="code-container has-copy-btn">
+                <button class="copy-btn" onclick="copyCode(this)">
+                    <div class="copy-icon">
+                        <div class="square-back"></div>
+                        <div class="square-front"></div>
+                    </div>
+                </button>
+                <pre><span class="code-dollar">$</span> Scripts/elysiadmgrun              # dmg/ 下最新的镜像
+<span class="code-dollar">$</span> Scripts/elysiadmgrun path.dmg     # 指定镜像
+<span class="code-dollar">$</span> Scripts/elysiadmgrun --eject      # 卸载</pre>
+            </div>
+            <p style="font-size: 1.1rem; line-height: 1.6; opacity: 0.9;">
+                想把它变成一条命令，做个软链放到 <code style="background-color: #99244F; color: #ffffff; padding: 2px 6px; border-radius: 4px;">PATH</code> 里即可：
+            </p>
+            <div class="code-container has-copy-btn">
+                <button class="copy-btn" onclick="copyCode(this)">
+                    <div class="copy-icon">
+                        <div class="square-back"></div>
+                        <div class="square-front"></div>
+                    </div>
+                </button>
+                <pre><span class="code-dollar">$</span> ln -s "$PWD/Scripts/elysiadmgrun" ~/.local/bin/elysiadmgrun</pre>
+            </div>
+        </div>
+
         <h2 style="font-size: 1.8rem; border-bottom: 2px solid #E63B7A; padding-bottom: 10px; margin-top: 40px;" data-lang="en">License</h2>
         <h2 style="font-size: 1.8rem; border-bottom: 2px solid #E63B7A; padding-bottom: 10px; margin-top: 40px;" data-lang="zh">许可</h2>
         <p style="font-size: 1.1rem; line-height: 1.6; opacity: 0.9;" data-lang="en">
