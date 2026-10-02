@@ -1285,9 +1285,9 @@ struct SettingsView: View {
 
             Section("settings.version") {
                 LabeledContent("settings.version.current") {
-                    // 带上构建号：CFBundleVersion 由打包脚本写成构建时间戳，
-                    // 这样一眼能看出手上这份是哪次构建，避免装错包来回排查。
-                    Text("\(AppVersion.current) (\(AppVersion.build))")
+                    // 只显示版本号。构建号（CFBundleVersion，打包时写成时间戳）不进界面，
+                    // 它用于内部辨认构建：见日志开头与「显示简介」。
+                    Text(AppVersion.current)
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
                 }
