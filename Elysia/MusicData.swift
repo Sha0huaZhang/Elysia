@@ -137,9 +137,13 @@ enum MusicData {
     }
 
     private static func fetchPlayerStatusSync() -> PlayerStatus {
-        // 每个字段各自 try：只要有一个属性读不出来（资料库里确实存在这种读不出任何
-        // 属性的孤立条目），旧写法会让整个 try 跳到 on error，把 ID、曲名、歌手全部
-        // 清空，界面就显示「未在播放」——而歌其实还在放。分开 try 后可降级为局部缺失。
+        // 一次解析出 current track 并复用同一个引用，而不是每个字段各写一次
+        // 「current track」。后者每次都是一次查找，一轮轮询要做六次，每秒十几次往返，
+        // 白白加重 Apple Music 的负担；而且读取途中若正好切歌，各字段会取自不同的曲目
+        // （曲名是新的、时长还是旧的），得到自相矛盾的状态。
+        //
+        // 每个字段仍各自 try：资料库里确实存在读不出任何属性的孤立条目，整体 try 会让它
+        // 一抛错就把 ID、曲名、歌手全部清空，界面显示「未在播放」而歌其实还在放。
         let script = """
         tell application "Music"
             set currentID to ""
@@ -149,19 +153,22 @@ enum MusicData {
             set trackArtist to ""
 
             try
-                set currentID to (persistent ID of current track) as text
+                set theTrack to current track
+                try
+                    set currentID to (persistent ID of theTrack) as text
+                end try
+                try
+                    set trackName to (name of theTrack) as text
+                end try
+                try
+                    set trackArtist to (artist of theTrack) as text
+                end try
+                try
+                    set dur to duration of theTrack
+                end try
             end try
             try
                 set pos to player position
-            end try
-            try
-                set dur to duration of current track
-            end try
-            try
-                set trackName to (name of current track) as text
-            end try
-            try
-                set trackArtist to (artist of current track) as text
             end try
 
             set stateStr to (player state as string)
