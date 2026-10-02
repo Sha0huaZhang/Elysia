@@ -7,23 +7,22 @@ import Foundation
 // 顺序以 Elysia 自己的列表为准（含用户拖拽后的自定义顺序），不使用 Apple Music
 // 的播放队列；Elysia 未运行时才由 Apple Music 自己决定顺序。
 enum SongAdvance {
-    /// 选锚点：现场值与已确认的稳定值**一致时用现场值**；不一致时信稳定值。
+    /// 选锚点：**现场值优先**，取不到时才用轮询确认过的稳定值。
     ///
-    /// 现场查询本身也可能读到过渡抖动（切歌时 Music 会在几首之间来回报「当前曲目」，
-    /// 界面甚至同时给多首显示正在播放标识）。所以不能无条件让现场值优先，否则抖动照旧
-    /// 传进来。两值一致说明确实在播那一首；不一致则说明现场值可能是抖动，此时用连续两轮
-    /// 确认过的稳定值更可靠。
-    ///
-    /// 稳定值还没有时（刚启动）别无选择，只能用现场值。
+    /// 早先写反过：当时认为「两者不一致说明现场值可能是切歌过渡态，应信稳定值」。但稳定值
+    /// 是**最后一次确认**的曲目，天然比实际播放慢一首；不一致恰恰说明曲目刚换过，此时信稳定值
+    /// 会以旧曲为锚点，算出的目标正是「上一首的下一首」——也就是正在播的那首，按下去像没反应。
+    /// 实测记录：现场=《友情岁月 (Live)》(#5)、稳定=《在银河中孤独摇摆》(#4)，
+    /// 结果算出目标 #5（正在播）。
     static func fallbackAnchor(live: String?, polled: String?) -> String? {
-        guard let polled else { return live }
-        return live == polled ? live : polled
+        live ?? polled
     }
 
     /// 算出「上一首 / 下一首」应落到的下标；返回 nil 表示不移动。
     ///
     /// - Parameters:
-    ///   - anchorIndex: 当前歌曲在列表中的下标。nil 表示还不知道播到哪首。
+    ///   - anchorIndex: 当前歌曲在列表中的下标。nil 表示还不知道播到哪首——此时**不动作**。
+    ///     早先会「从头开始」兜底，那等于在不确定时擅自替用户选一首，可能跳到毫不相干的歌。
     ///   - count: 列表长度。
     ///   - offset: +1 下一首，-1 上一首。
     ///   - repeatAll: 是否处于「列表循环」。
@@ -33,15 +32,9 @@ enum SongAdvance {
         offset: Int,
         repeatAll: Bool
     ) -> Int? {
-        guard count > 0 else { return nil }
+        guard count > 0, let anchor = anchorIndex else { return nil }
 
-        let candidate: Int
-        if let anchor = anchorIndex {
-            candidate = anchor + offset
-        } else {
-            // 还不知道播到哪首：向前就从头开始，向后就从末尾开始
-            candidate = offset > 0 ? 0 : count - 1
-        }
+        let candidate = anchor + offset
 
         if candidate < 0 {
             return repeatAll ? count - 1 : nil

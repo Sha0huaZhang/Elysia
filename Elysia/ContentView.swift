@@ -365,6 +365,8 @@ struct ContentView: View {
                             Diagnostics.log("曲目候选 \(name(of: id))（上一候选 \(self.candidateTrackID.map { name(of: $0) } ?? "无")），等下一轮确认")
                         }
                         self.candidateTrackID = id
+                        // 曲目变了，之前确认过的稳定值已经过期，作废以免长期滞后一首
+                        self.stableTrackID = nil
                     }
                 }
 
@@ -442,16 +444,19 @@ struct ContentView: View {
             return
         }
 
-        // 现场询问 Music 当前在播哪首，避免用滞后的轮询值当锚点
+        // 现场询问 Music 当前在播哪首：按下这一刻的真相，优先于滞后的轮询值
         Task {
             let live = await MusicData.fetchCurrentTrackID()
             await MainActor.run {
-                Diagnostics.log("按下 \(offset > 0 ? "下一首" : "上一首")：现场查询 Music = \(live.map { name(of: $0) } ?? "空")；稳定曲目 = \(stableTrackID.map { name(of: $0) } ?? "空")")
-                advance(
-                    offset: offset,
-                    // 现场值与稳定值一致时用现场值；不一致时信稳定值（现场值可能读到过渡抖动）
-                    anchorID: SongAdvance.fallbackAnchor(live: live, polled: stableTrackID)
-                )
+                let anchor = SongAdvance.fallbackAnchor(live: live, polled: stableTrackID)
+                Diagnostics.log("按下 \(offset > 0 ? "下一首" : "上一首")：现场查询 = \(live.map { name(of: $0) } ?? "空")；稳定曲目 = \(stableTrackID.map { name(of: $0) } ?? "空")")
+                guard let anchor else {
+                    // 两者都取不到（例如 AppleScript 偶发失败）时宁可不动作。
+                    // 若把 nil 当锚点，索引推算会从列表两端开始，跳到第一首毫不相干的歌。
+                    Diagnostics.log("按下 \(offset > 0 ? "下一首" : "上一首")：取不到当前曲目，不动作")
+                    return
+                }
+                advance(offset: offset, anchorID: anchor)
             }
         }
     }
