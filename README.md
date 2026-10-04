@@ -89,6 +89,8 @@ developer. Either workaround is fine:
 
 **Play / pause** — double-click a song, or use the play/pause button.
 
+**Previous / next** — the buttons at the top, or the F7 / F9 keys.
+
 **Reorder songs** — drag a song between the two songs you want it to sit
 between, then let go.
 
@@ -97,6 +99,30 @@ between, then let go.
 
 **Change the language or restore the default song order** — open **Settings**
 in the sidebar and adjust it there.
+
+**Offline** — songs that have not been downloaded are greyed out and will not
+play; clicking one says why.
+
+**Playlists** are kept inside Elysia. They are never written to Apple Music, and
+nothing in Apple Music is changed.
+
+**New playlist ⌘N** — give it a name, tick the songs to include, then press
+**Confirm ⌘Enter**.
+
+**Open a playlist** — double-click it, or click the arrow on its row. Inside it
+works like **songs**: playing, seeking and the media keys all behave the same.
+
+**Edit its songs ⌘E** — press ⌘E inside the playlist, or right-click it in the
+list. Songs it already holds come up already ticked.
+
+**Rename ⌘⇧R** — select the playlist first, or right-click it in the list.
+
+**Delete ⌘D** — select the playlist first, or right-click it. With nothing
+selected, ⌘D lists the playlists so you can pick one. Every delete is confirmed
+once more before it happens.
+
+**Reordering** — drag the playlists to change their order, and the songs inside
+one; a playlist's artwork always follows its first song.
 
 On first install, or after an update, if the song list is not recognized, refresh
 it in **Settings → Library**. If that still does not work, quit Apple Music and
