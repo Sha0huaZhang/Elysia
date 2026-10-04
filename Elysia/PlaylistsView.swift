@@ -206,13 +206,18 @@ struct PlaylistsView: View {
                     isChoosingDelete = false
                 } label: {
                     HStack(spacing: 4) {
-                        Text("common.cancel").foregroundColor(.red)
-                        Text("Esc").foregroundColor(Color.red.opacity(0.55))
+                        // 取消用黑色，与右侧的红色「删除歌单」区分开：红的是危险动作，
+                        // 取消不是。快捷键文字用更柔和的一档，仍按既有约定。
+                        Text("common.cancel").foregroundColor(.primary)
+                        Text("Esc").foregroundColor(.secondary)
+                        Text("或").foregroundColor(.secondary)
+                        Text("⌘.").foregroundColor(.secondary)
                     }
                     .padding(.horizontal, 10)
                     .padding(.vertical, 3)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 6).stroke(Color.red, lineWidth: 1)
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Color.primary.opacity(0.45), lineWidth: 1)
                     )
                 }
                 .buttonStyle(.plain)
@@ -232,6 +237,16 @@ struct PlaylistsView: View {
                 .buttonStyle(.plain)
             }
             .padding(16)
+            // ⌘. 与 Esc 等价。一个视图只能挂一个快捷键，所以另放一个不参与布局、
+            // 也不参与点击判定的按钮来承载它（opacity(0) 并不影响命中测试，
+            // allowsHitTesting(false) 才是真正让它不挡点击的开关）。
+            .background(
+                Button { isChoosingDelete = false } label: { EmptyView() }
+                    .keyboardShortcut(".", modifiers: .command)
+                    .opacity(0)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            )
         }
         .frame(width: 420, height: 420)
     }
