@@ -163,14 +163,6 @@ struct NewPlaylistSheet: View {
             .buttonStyle(.plain)
             .keyboardShortcut(.cancelAction)
 
-            // ⌘. 是 macOS 上「取消」的另一种标准按法。一个按钮只能挂一个快捷键，
-            // 所以另外放一个零尺寸按钮承载它——同样调用取消，不占布局、不可点中。
-            Button(action: onCancel) { EmptyView() }
-                .keyboardShortcut(".", modifiers: .command)
-                .frame(width: 0, height: 0)
-                .opacity(0)
-                .accessibilityHidden(true)
-
             Button(action: confirm) {
                 HStack(spacing: 4) {
                     Text("playlists.confirm").foregroundColor(.blue)
@@ -187,6 +179,16 @@ struct NewPlaylistSheet: View {
             .keyboardShortcut(.return, modifiers: .command)
         }
         .padding(16)
+        // ⌘. 是 macOS 上「取消」的另一种标准按法。一个按钮只能挂一个快捷键，所以另放
+        // 一个零尺寸按钮承载它。放在 background 里是为了不参与上面的布局——夹在两个
+        // 按钮之间的话，HStack 会在它两侧各留一份间距，把那两个按钮撑开一倍。
+        .background(
+            Button(action: onCancel) { EmptyView() }
+                .keyboardShortcut(".", modifiers: .command)
+                .frame(width: 0, height: 0)
+                .opacity(0)
+                .accessibilityHidden(true)
+        )
     }
 
     private var selectedCountText: String {
