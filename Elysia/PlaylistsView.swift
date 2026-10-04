@@ -181,13 +181,11 @@ struct PlaylistsView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List(playlists, selection: $pickerSelection) { playlist in
-                    HStack(spacing: 8) {
-                        Text(playlist.name)
-                        Spacer()
-                        Text(songCountText(resolvedSongs(playlist).count))
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                    }
+                    PlaylistPickRow(
+                        playlist: playlist,
+                        songs: resolvedSongs(playlist),
+                        isSelected: pickerSelection == playlist.id
+                    )
                     .tag(playlist.id)
                 }
                 .listStyle(.plain)
@@ -430,15 +428,12 @@ struct PlaylistsView: View {
 
 // MARK: - 歌单行
 //
-// 与歌曲行同一套样式：左侧封面取歌单第一首的封面，右边第一行歌单名、第二行歌曲数
-// （对应歌曲行里歌名与艺人的位置）。双击进入歌单，进入后与「歌曲」页完全一致。
-private struct PlaylistRow: View {
+// 主列表与挑选窗口共用同一份行内容（封面 + 名称 + 歌曲数），两处样式不会分叉；
+// 区别只在行尾的标记，以及主列表需要单击/双击手势。
+private struct PlaylistRowContent: View {
     let playlist: Playlist
     /// 已与资料库对上的曲目（对不上的已丢掉），封面与数量都按这个算
     let songs: [Song]
-    let onOpen: () -> Void
-    /// 单击：选中这一行
-    let onSelect: () -> Void
 
     @State private var artworkImage: NSImage? = nil
 
@@ -466,26 +461,10 @@ private struct PlaylistRow: View {
             }
 
             Spacer()
-
-            // 也可以点箭头进入：不必只靠双击，双击的判定本来就有先后关系
-            Button(action: onOpen) {
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .help("playlists.open")
         }
         .padding(.vertical, 4)
-        .contentShape(Rectangle())
         // 封面跟着歌单第一首走：拖动排序或编辑曲目后第一首变了，这里会重新取封面
         .task(id: songs.first?.id) { await loadArtwork() }
-        // 单击与双击：List 自己的选中判定要和双击手势抢同一次单击，谁赢取决于时序，
-        // 于是「有时能选中有时候选不中」。这里用同时手势自己处理单击，选中不再依赖
-        // List 的内部判定；双击因此仍然可用。
-        .onTapGesture(count: 2) { onOpen() }
-        .simultaneousGesture(TapGesture(count: 1).onEnded { onSelect() })
     }
 
     private func loadArtwork() async {
@@ -495,6 +474,55 @@ private struct PlaylistRow: View {
         }
         let image = await MusicData.fetchArtwork(persistentID: first.id)
         await MainActor.run { self.artworkImage = image }
+    }
+}
+
+/// 主列表的歌单行：行内容 + 可点击的箭头，单击选中、双击进入。
+private struct PlaylistRow: View {
+    let playlist: Playlist
+    let songs: [Song]
+    let onOpen: () -> Void
+    /// 单击：选中这一行
+    let onSelect: () -> Void
+
+    var body: some View {
+        PlaylistRowContent(playlist: playlist, songs: songs)
+            .overlay(alignment: .trailing) {
+                // 也可以点箭头进入：不必只靠双击，双击的判定本来就有先后关系
+                Button(action: onOpen) {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("playlists.open")
+            }
+            .contentShape(Rectangle())
+            // 单击与双击：List 自己的选中判定要和双击手势抢同一次单击，谁赢取决于时序，
+            // 于是「有时能选中有时候选不中」。这里用同时手势自己处理单击，选中不再依赖
+            // List 的内部判定；双击因此仍然可用。
+            .onTapGesture(count: 2) { onOpen() }
+            .simultaneousGesture(TapGesture(count: 1).onEnded { onSelect() })
+    }
+}
+
+/// 挑选窗口的歌单行：同一份行内容 + 行尾圆点。
+///
+/// 这里刻意不挂任何手势：没有手势竞争，List 的原生选中就是可靠的，单击必中；
+/// 主列表那个「时好时坏」的问题正是手势抢同一次单击造成的。
+private struct PlaylistPickRow: View {
+    let playlist: Playlist
+    let songs: [Song]
+    let isSelected: Bool
+
+    var body: some View {
+        PlaylistRowContent(playlist: playlist, songs: songs)
+            .overlay(alignment: .trailing) {
+                Image(systemName: isSelected ? "circle.fill" : "circle")
+                    .font(.system(size: 13))
+                    .foregroundColor(isSelected ? .red : .secondary)
+            }
     }
 }
 
