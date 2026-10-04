@@ -48,6 +48,32 @@ struct PlaylistsView: View {
         } message: { playlist in
             Text(deleteMessage(for: playlist))
         }
+        // 选中某个歌单后，编辑与重命名也要能直接用快捷键，不必先右键。
+        // 放在 background 里是为了不参与上面的布局（与新建歌单对话窗里 ⌘. 同样的做法）。
+        .background(selectionShortcuts)
+    }
+
+    /// 选中歌单后可用的快捷键。
+    ///
+    /// 与 ⌘D 一致：没有选中时什么都不做。这些操作都要有明确的目标，不能替用户猜是哪一个。
+    private var selectionShortcuts: some View {
+        Group {
+            Button { runOnSelection(action: "编辑", startEditing) } label: { EmptyView() }
+                .keyboardShortcut("e", modifiers: .command)
+            Button { runOnSelection(action: "重命名", startRenaming) } label: { EmptyView() }
+                .keyboardShortcut("r", modifiers: [.command, .shift])
+        }
+        .frame(width: 0, height: 0)
+        .opacity(0)
+        .accessibilityHidden(true)
+    }
+
+    private func runOnSelection(action: String, _ perform: (Playlist) -> Void) {
+        guard let target = selectedPlaylist else {
+            Diagnostics.log("未选中歌单，\(action)已忽略")
+            return
+        }
+        perform(target)
     }
 
     // MARK: 顶部右上角：新建（靠前） / 删除（靠后），两者相隔一个文字
