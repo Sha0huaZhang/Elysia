@@ -165,6 +165,9 @@ struct PlaylistsView: View {
                             selection = playlist.id
                             Diagnostics.log("进入歌单《\(playlist.name)》")
                             onOpen(playlist)
+                        },
+                        onSelect: {
+                            selection = playlist.id
                         }
                     )
                     .tag(playlist.id)
@@ -332,6 +335,8 @@ private struct PlaylistRow: View {
     /// 已与资料库对上的曲目（对不上的已丢掉），封面与数量都按这个算
     let songs: [Song]
     let onOpen: () -> Void
+    /// 单击：选中这一行
+    let onSelect: () -> Void
 
     @State private var artworkImage: NSImage? = nil
 
@@ -360,15 +365,25 @@ private struct PlaylistRow: View {
 
             Spacer()
 
-            Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.secondary)
+            // 也可以点箭头进入：不必只靠双击，双击的判定本来就有先后关系
+            Button(action: onOpen) {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("playlists.open")
         }
         .padding(.vertical, 4)
         .contentShape(Rectangle())
         // 封面跟着歌单第一首走：拖动排序或编辑曲目后第一首变了，这里会重新取封面
         .task(id: songs.first?.id) { await loadArtwork() }
+        // 单击与双击：List 自己的选中判定要和双击手势抢同一次单击，谁赢取决于时序，
+        // 于是「有时能选中有时候选不中」。这里用同时手势自己处理单击，选中不再依赖
+        // List 的内部判定；双击因此仍然可用。
         .onTapGesture(count: 2) { onOpen() }
+        .simultaneousGesture(TapGesture(count: 1).onEnded { onSelect() })
     }
 
     private func songCountText(_ count: Int) -> String {

@@ -33,6 +33,7 @@
 "playlists.edit"                   = "编辑歌曲";
 "playlists.editMenu"               = "编辑";
 "playlists.rename"                 = "重命名";
+"playlists.open"                   = "进入歌单";
 "playlists.edit.title"             = "编辑歌曲";
 "playlists.name.label"             = "歌单名称";
 "playlists.name.placeholder"       = "输入歌单名称";

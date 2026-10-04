@@ -34,6 +34,7 @@
 "playlists.edit"                   = "Edit Songs";
 "playlists.editMenu"               = "Edit";
 "playlists.rename"                 = "Rename";
+"playlists.open"                   = "Open Playlist";
 "playlists.edit.title"             = "Edit Songs";
 "playlists.name.label"             = "Name";
 "playlists.name.placeholder"       = "Enter a playlist name";
