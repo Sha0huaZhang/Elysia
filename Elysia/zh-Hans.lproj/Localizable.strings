@@ -26,6 +26,21 @@
 "songs.empty.title"    = "没有找到歌曲";
 "songs.empty.hint"     = "请确认 Apple Music 已登录并拥有资料库";
 
+/* 歌单 */
+"playlists.new"                    = "新建歌单";
+"playlists.delete"                 = "删除歌单";
+"playlists.new.title"              = "新建歌单";
+"playlists.name.label"             = "歌单名称";
+"playlists.name.placeholder"       = "输入歌单名称";
+"playlists.duplicate"              = "已有同名歌单";
+"playlists.confirm"                = "确认";
+"playlists.selectedCount"          = "已选 %d 首";
+"playlists.songCount"              = "%d 首";
+"playlists.empty.title"            = "还没有歌单";
+"playlists.empty.hint"             = "点按「新建歌单」创建一个。歌单只保存在 Elysia 中，不会写入 Apple Music。";
+"playlists.delete.confirm.title"   = "删除歌单";
+"playlists.delete.confirm.message" = "「%@」将被删除。歌单只存在于 Elysia，删除后无法恢复。";
+
 /* 设置 — 语言 */
 "settings.language"                 = "语言";
 "settings.language.system"          = "跟随系统";

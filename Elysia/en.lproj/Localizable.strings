@@ -27,6 +27,21 @@
 "songs.empty.title"    = "No songs found";
 "songs.empty.hint"     = "Make sure Apple Music is signed in and has a library";
 
+/* Playlists */
+"playlists.new"                    = "New Playlist";
+"playlists.delete"                 = "Delete Playlist";
+"playlists.new.title"              = "New Playlist";
+"playlists.name.label"             = "Name";
+"playlists.name.placeholder"       = "Enter a playlist name";
+"playlists.duplicate"              = "A playlist with this name already exists";
+"playlists.confirm"                = "Confirm";
+"playlists.selectedCount"          = "%d selected";
+"playlists.songCount"              = "%d songs";
+"playlists.empty.title"            = "No playlists yet";
+"playlists.empty.hint"             = "Press New Playlist to create one. Playlists are kept in Elysia and are never written to Apple Music.";
+"playlists.delete.confirm.title"   = "Delete Playlist";
+"playlists.delete.confirm.message" = "“%@” will be deleted. Playlists live in Elysia only, so this cannot be undone.";
+
 /* Settings — language */
 /* Language names stay in their own language (endonyms), as macOS does:
    a Chinese reader looks for "简体中文" whatever the current UI language is. */

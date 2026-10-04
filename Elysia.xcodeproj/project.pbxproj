@@ -14,17 +14,20 @@
 		3580F9DC045B034F18DB2FAB /* SongAdvance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BA0C54EBC4DF4AF2AC64211 /* SongAdvance.swift */; };
 		3AEFE0BA18EDAB3945B0C592 /* SongOrder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CE4BC4FDDF7FD5A622A844D /* SongOrder.swift */; };
 		3C5F2EC1987CAC641D1A7D49 /* PositionSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A5465E72AF49B2E67186358 /* PositionSync.swift */; };
+		4D175465B26E2FB7D9B63341 /* Playlist.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F723B27D1EFBD676D7281E3 /* Playlist.swift */; };
 		5FAC2119C7ED365E9165A84C /* Diagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = F17B0A2E22A738FA40E07275 /* Diagnostics.swift */; };
 		648FD0408A8B337A9C458C09 /* AppLanguage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D3E44E1927D19A4A5F03E9B /* AppLanguage.swift */; };
 		64EF91626727421D1E49CB1F /* VersionCheck.swift in Sources */ = {isa = PBXBuildFile; fileRef = 533501627308B6FB572A6AF7 /* VersionCheck.swift */; };
 		6AC52737ACC0005FC103DA26 /* MusicData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A30A4F8A4703F1CB9FA1863 /* MusicData.swift */; };
 		7E1E6C0D1E049DB31C89185E /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 424B85B5E4C0CAAFB41C665B /* ContentView.swift */; };
 		7E6C6ACECC36357DCF64F53D /* TrackEnd.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3DA639ACC11323FC290279 /* TrackEnd.swift */; };
+		7F8F50E698DE0ABC5A9E7C0B /* NewPlaylistSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 848E57F07CBEC7FD518FC78A /* NewPlaylistSheet.swift */; };
 		97FE602EB92671F7F0D52D96 /* ElysiaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0737928E41B180E0C8404F4 /* ElysiaApp.swift */; };
 		B00E267D6A675A48B94E1AFB /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64795FDA612B173C0FC681D /* SettingsView.swift */; };
 		C47AB7DA93AC542FEDD5FDC6 /* SongListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EFFB3A0030F2EBFC8CE58C5 /* SongListView.swift */; };
 		CE2F9A9B3941F9706C319C76 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82042435909503373FD81B3B /* SidebarView.swift */; };
 		CE689792AC45932D60881937 /* PlayerControlBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 411DDE90D74EF5F6508E935E /* PlayerControlBar.swift */; };
+		D47E33A1E86BB6A1CD7AD2E2 /* PlaylistsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CA77F9D1311984A9BCAE4A3 /* PlaylistsView.swift */; };
 		EB5FA17C967C53A1C3DD9E81 /* ComingSoonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81BE71E0D701C7FADDF2CBDA /* ComingSoonView.swift */; };
 		F4B64DA47184F93B7D2C9801 /* MediaKeys.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B2A7E5A10306C7BCB1D28C8 /* MediaKeys.swift */; };
 /* End PBXBuildFile section */
@@ -32,6 +35,7 @@
 /* Begin PBXFileReference section */
 		19A96EACC17BD9736A05661B /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		1D3E44E1927D19A4A5F03E9B /* AppLanguage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLanguage.swift; sourceTree = "<group>"; };
+		2CA77F9D1311984A9BCAE4A3 /* PlaylistsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistsView.swift; sourceTree = "<group>"; };
 		2E21AB5EF498774F87323DA2 /* Elysia.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Elysia.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3A30A4F8A4703F1CB9FA1863 /* MusicData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicData.swift; sourceTree = "<group>"; };
 		3B2A7E5A10306C7BCB1D28C8 /* MediaKeys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaKeys.swift; sourceTree = "<group>"; };
@@ -42,8 +46,10 @@
 		5BA0C54EBC4DF4AF2AC64211 /* SongAdvance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongAdvance.swift; sourceTree = "<group>"; };
 		6CE4BC4FDDF7FD5A622A844D /* SongOrder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongOrder.swift; sourceTree = "<group>"; };
 		6F3DA639ACC11323FC290279 /* TrackEnd.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackEnd.swift; sourceTree = "<group>"; };
+		6F723B27D1EFBD676D7281E3 /* Playlist.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Playlist.swift; sourceTree = "<group>"; };
 		81BE71E0D701C7FADDF2CBDA /* ComingSoonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComingSoonView.swift; sourceTree = "<group>"; };
 		82042435909503373FD81B3B /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
+		848E57F07CBEC7FD518FC78A /* NewPlaylistSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewPlaylistSheet.swift; sourceTree = "<group>"; };
 		8A5465E72AF49B2E67186358 /* PositionSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PositionSync.swift; sourceTree = "<group>"; };
 		8A5FD21DDB2768015E29A941 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		8DBF8BDB0BD18BC704604D82 /* SongSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongSearch.swift; sourceTree = "<group>"; };
@@ -67,7 +73,10 @@
 				3B2A7E5A10306C7BCB1D28C8 /* MediaKeys.swift */,
 				3A30A4F8A4703F1CB9FA1863 /* MusicData.swift */,
 				E41EFAAD4F3E3C0C26348536 /* NetworkMonitor.swift */,
+				848E57F07CBEC7FD518FC78A /* NewPlaylistSheet.swift */,
 				411DDE90D74EF5F6508E935E /* PlayerControlBar.swift */,
+				6F723B27D1EFBD676D7281E3 /* Playlist.swift */,
+				2CA77F9D1311984A9BCAE4A3 /* PlaylistsView.swift */,
 				8A5465E72AF49B2E67186358 /* PositionSync.swift */,
 				B64795FDA612B173C0FC681D /* SettingsView.swift */,
 				82042435909503373FD81B3B /* SidebarView.swift */,
@@ -175,7 +184,10 @@
 				F4B64DA47184F93B7D2C9801 /* MediaKeys.swift in Sources */,
 				6AC52737ACC0005FC103DA26 /* MusicData.swift in Sources */,
 				33E850361581264BC9A6D6DD /* NetworkMonitor.swift in Sources */,
+				7F8F50E698DE0ABC5A9E7C0B /* NewPlaylistSheet.swift in Sources */,
 				CE689792AC45932D60881937 /* PlayerControlBar.swift in Sources */,
+				4D175465B26E2FB7D9B63341 /* Playlist.swift in Sources */,
+				D47E33A1E86BB6A1CD7AD2E2 /* PlaylistsView.swift in Sources */,
 				3C5F2EC1987CAC641D1A7D49 /* PositionSync.swift in Sources */,
 				B00E267D6A675A48B94E1AFB /* SettingsView.swift in Sources */,
 				CE2F9A9B3941F9706C319C76 /* SidebarView.swift in Sources */,
@@ -216,7 +228,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0.9;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = org.macwave.Elysia;
 				SDKROOT = macosx;
 			};
@@ -291,7 +303,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0.9;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = org.macwave.Elysia;
 				SDKROOT = macosx;
 			};

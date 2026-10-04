@@ -145,7 +145,9 @@ struct ContentView: View {
             )
         case .songs, nil:
             playerView
-        case .playlists, .albums, .start:
+        case .playlists:
+            PlaylistsView(songs: songs)
+        case .albums, .start:
             ComingSoonView(item: selectedItem ?? .songs)
         }
     }
