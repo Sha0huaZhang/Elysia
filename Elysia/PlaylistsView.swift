@@ -2,10 +2,9 @@ import SwiftUI
 
 // MARK: - 歌单
 //
-// 歌单只存在于 Elysia 内部，不写入 Apple Music。这里先做「新建 / 删除」与列表；
-// 播放歌单（按歌单顺序逐个申请播放）留待后续。
+// 歌单只存在于 Elysia 内部，不写入 Apple Music。
 struct PlaylistsView: View {
-    /// 资料库全部曲目，供新建歌单时挑选
+    /// 资料库全部曲目，供新建/编辑歌单时挑选
     let songs: [Song]
     /// 双击某个歌单：进入它（由上层切换到歌单详情页）
     let onOpen: (Playlist) -> Void
@@ -15,12 +14,13 @@ struct PlaylistsView: View {
     @State private var playlists: [Playlist] = []
     @State private var selection: UUID? = nil
     @State private var isCreating = false
-    @State private var isConfirmingDelete = false
-
-    private var selectedPlaylist: Playlist? {
-        guard let selection else { return nil }
-        return playlists.first { $0.id == selection }
-    }
+    /// 正在编辑曲目的歌单
+    @State private var editing: Playlist? = nil
+    /// 正在重命名的歌单，以及输入框里的文字
+    @State private var renaming: Playlist? = nil
+    @State private var renameText = ""
+    /// 待确认删除的歌单。删除一律先经这一步，不直接删。
+    @State private var pendingDelete: Playlist? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -29,30 +29,24 @@ struct PlaylistsView: View {
             content
         }
         .onAppear { reload() }
-        .sheet(isPresented: $isCreating) {
-            PlaylistSheet(
-                titleKey: "playlists.new.title",
-                songs: songs,
-                nameExists: { store.contains(name: $0) },
-                onConfirm: { name, songIDs in
-                    if let created = store.create(name: name, songIDs: songIDs) {
-                        Diagnostics.log("新建歌单《\(created.name)》，\(songIDs.count) 首")
-                        reload()
-                        selection = created.id
-                    }
-                    isCreating = false
-                },
-                onCancel: { isCreating = false }
-            )
+        .sheet(isPresented: $isCreating) { createSheet }
+        .sheet(item: $editing) { playlist in editSheet(playlist) }
+        .alert(renameTitle, isPresented: isRenaming) {
+            TextField("playlists.name.placeholder", text: $renameText)
+            Button("common.cancel", role: .cancel) { renaming = nil }
+            Button("playlists.confirm") { commitRename() }
+        } message: {
+            renameMessage
         }
         .confirmationDialog(
             "playlists.delete.confirm.title",
-            isPresented: $isConfirmingDelete
-        ) {
-            Button("playlists.delete", role: .destructive) { deleteSelected() }
-            Button("common.cancel", role: .cancel) {}
-        } message: {
-            Text(deleteMessage)
+            isPresented: isConfirmingDelete,
+            presenting: pendingDelete
+        ) { playlist in
+            Button("playlists.delete", role: .destructive) { delete(playlist) }
+            Button("common.cancel", role: .cancel) { pendingDelete = nil }
+        } message: { playlist in
+            Text(deleteMessage(for: playlist))
         }
     }
 
@@ -103,12 +97,19 @@ struct PlaylistsView: View {
         .padding(.vertical, 10)
     }
 
+    private var isConfirmingDelete: Binding<Bool> {
+        Binding(
+            get: { pendingDelete != nil },
+            set: { if !$0 { pendingDelete = nil } }
+        )
+    }
+
     private func requestDelete() {
-        guard selectedPlaylist != nil else {
+        guard let target = selectedPlaylist else {
             Diagnostics.log("未选中歌单，删除已忽略")
             return
         }
-        isConfirmingDelete = true
+        pendingDelete = target
     }
 
     @ViewBuilder
@@ -136,10 +137,113 @@ struct PlaylistsView: View {
                         }
                     )
                     .tag(playlist.id)
+                    .contextMenu {
+                        Button("playlists.editMenu") { startEditing(playlist) }
+                            .keyboardShortcut("e", modifiers: .command)
+                        Button("playlists.rename") { startRenaming(playlist) }
+                        Divider()
+                        Button("playlists.delete", role: .destructive) { pendingDelete = playlist }
+                    }
+                }
+                // 拖动调整歌单之间的先后。列表顺序就是存储顺序，拖完立即落盘。
+                .onMove { offsets, destination in
+                    let reordered = Playlist.moved(
+                        playlists.map(\.id), fromOffsets: offsets, toOffset: destination
+                    )
+                    store.reorder(ids: reordered)
+                    reload()
                 }
             }
             .listStyle(.plain)
         }
+    }
+
+    // MARK: 弹窗
+
+    private var createSheet: some View {
+        PlaylistSheet(
+            titleKey: "playlists.new.title",
+            songs: songs,
+            nameExists: { store.contains(name: $0) },
+            onConfirm: { name, songIDs in
+                if let created = store.create(name: name, songIDs: songIDs) {
+                    Diagnostics.log("新建歌单《\(created.name)》，\(songIDs.count) 首")
+                    reload()
+                    selection = created.id
+                }
+                isCreating = false
+            },
+            onCancel: { isCreating = false }
+        )
+    }
+
+    private func editSheet(_ playlist: Playlist) -> some View {
+        PlaylistSheet(
+            titleKey: "playlists.edit.title",
+            songs: songs,
+            initialName: playlist.name,
+            initialOrder: playlist.songIDs,
+            nameExists: { store.contains(name: $0, excluding: playlist.id) },
+            onConfirm: { name, songIDs in
+                editing = nil
+                if let updated = store.update(id: playlist.id, name: name, songIDs: songIDs) {
+                    Diagnostics.log("编辑歌单《\(updated.name)》，共 \(songIDs.count) 首")
+                    reload()
+                }
+            },
+            onCancel: { editing = nil }
+        )
+    }
+
+    // MARK: 重命名
+
+    private var isRenaming: Binding<Bool> {
+        Binding(
+            get: { renaming != nil },
+            set: { if !$0 { renaming = nil } }
+        )
+    }
+
+    private var renameTitle: LocalizedStringKey { "playlists.rename" }
+
+    /// 在提示里说明为什么不能确认，而不是让「确认」按钮变灰——变灰会把颜色一起调暗。
+    private var renameMessage: Text {
+        if renameText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return Text("playlists.name.required")
+        }
+        if let playlist = renaming, store.contains(name: renameText, excluding: playlist.id) {
+            return Text("playlists.duplicate")
+        }
+        return Text("playlists.name.placeholder")
+    }
+
+    // MARK: 操作
+
+    private func startEditing(_ playlist: Playlist) {
+        selection = playlist.id
+        editing = playlist
+    }
+
+    private func startRenaming(_ playlist: Playlist) {
+        selection = playlist.id
+        renameText = playlist.name
+        renaming = playlist
+    }
+
+    private func commitRename() {
+        guard let playlist = renaming else { return }
+        let name = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, !store.contains(name: name, excluding: playlist.id) else { return }
+        if let updated = store.update(id: playlist.id, name: name, songIDs: playlist.songIDs) {
+            Diagnostics.log("重命名歌单《\(playlist.name)》→《\(updated.name)》")
+            reload()
+        }
+        renaming = nil
+    }
+
+    private var selectedPlaylist: Playlist? {
+        guard let selection else { return nil }
+        return playlists.first { $0.id == selection }
     }
 
     /// 歌单里能真正对上的曲目。
@@ -155,23 +259,26 @@ struct PlaylistsView: View {
         return resolved
     }
 
-    private var deleteMessage: String {
+    private func deleteMessage(for playlist: Playlist) -> String {
         let format = Bundle.main.localizedString(
             forKey: "playlists.delete.confirm.message", value: nil, table: nil
         )
-        return String(format: format, selectedPlaylist?.name ?? "")
+        return String(format: format, playlist.name)
     }
 
     private func reload() {
         playlists = store.all
+        // 选中的歌单可能已经被删掉
+        if let id = selection, !playlists.contains(where: { $0.id == id }) {
+            selection = nil
+        }
     }
 
-    private func deleteSelected() {
-        guard let target = selectedPlaylist else { return }
-        store.delete(id: target.id)
-        Diagnostics.log("删除歌单《\(target.name)》")
+    private func delete(_ playlist: Playlist) {
+        store.delete(id: playlist.id)
+        Diagnostics.log("删除歌单《\(playlist.name)》")
+        pendingDelete = nil
         reload()
-        selection = nil
     }
 }
 
@@ -218,6 +325,7 @@ private struct PlaylistRow: View {
         }
         .padding(.vertical, 4)
         .contentShape(Rectangle())
+        // 封面跟着歌单第一首走：拖动排序或编辑曲目后第一首变了，这里会重新取封面
         .task(id: songs.first?.id) { await loadArtwork() }
         .onTapGesture(count: 2) { onOpen() }
     }

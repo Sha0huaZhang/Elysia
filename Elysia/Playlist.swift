@@ -21,6 +21,27 @@ struct Playlist: Identifiable, Codable, Hashable {
 }
 
 extension Playlist {
+    /// 把 `items` 从 `fromOffsets` 移到 `toOffset`，与 SwiftUI 的 `onMove` 语义一致。
+    ///
+    /// 自己实现而不用 `Array.move(fromOffsets:toOffset:)`：那个来自 SwiftUI，而这个文件
+    /// 只依赖 Foundation，放在这里也能单独测。越界的参数按边界取值，不抛错。
+    static func moved(_ ids: [UUID], fromOffsets: IndexSet, toOffset: Int) -> [UUID] {
+        let moving = fromOffsets.filter { ids.indices.contains($0) }.map { ids[$0] }
+        guard !moving.isEmpty else { return ids }
+
+        var rest = ids
+        for index in fromOffsets.sorted(by: >) where rest.indices.contains(index) {
+            rest.remove(at: index)
+        }
+        // 目标位置要减去「被移走的、且位于目标之前」的个数，才是插入点
+        let removedBefore = fromOffsets.filter { $0 < toOffset }.count
+        let insertAt = max(0, min(rest.count, toOffset - removedBefore))
+
+        var result = rest
+        result.insert(contentsOf: moving, at: insertAt)
+        return result
+    }
+
     /// 选曲确认后写回的曲目顺序。
     ///
     /// 原本就在歌单里的曲目保留它们在歌单中的先后，新选的在后面按歌曲列表的先后接上：
@@ -112,6 +133,20 @@ struct PlaylistStore {
 
     func delete(id: UUID) {
         save(all.filter { $0.id != id })
+    }
+
+    /// 按给定顺序重排歌单。
+    ///
+    /// 只接受与现有歌单集合完全一致的顺序：数量不符、含重复 ID、含未知 ID 都原样返回。
+    /// 这里必须挡住重复——只查数量的话，传入三个相同的 ID 会通过检查，然后把所有歌单都
+    /// 变成同一个，等于把数据毁掉。
+    func reorder(ids: [UUID]) {
+        let list = all
+        guard ids.count == list.count, Set(ids).count == list.count else { return }
+        let byID = Dictionary(list.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let reordered = ids.compactMap { byID[$0] }
+        guard reordered.count == list.count else { return }
+        save(reordered)
     }
 
     /// 编辑歌单：改名与改曲目。

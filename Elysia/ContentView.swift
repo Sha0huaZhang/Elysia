@@ -20,6 +20,8 @@ struct ContentView: View {
     @State private var openedPlaylist: Playlist? = nil
     /// 歌单详情页是否正在编辑歌曲
     @State private var isEditingSongs = false
+    /// 详情页是否在确认删除这个歌单
+    @State private var isConfirmingDeletePlaylist = false
     /// 侧边栏搜索框的文字
     @State private var searchText = ""
 
@@ -189,9 +191,9 @@ struct ContentView: View {
             Divider()
             songList(
                 displayed: visibleSongs,
-                // 歌单的顺序调整留待后续；先把「歌曲」页的拖动挡在外面，避免改了这里却存不进歌单
-                isReorderEnabled: false,
-                onReorder: persistOrder
+                // 歌单内也能拖动排序，拖完写回歌单本身（不碰资料库顺序）
+                isReorderEnabled: !isSearching,
+                onReorder: persistPlaylistOrder
             )
         }
     }
@@ -241,10 +243,52 @@ struct ContentView: View {
             }
             .buttonStyle(.plain)
             .keyboardShortcut("e", modifiers: .command)
+
+            // 一个文字的宽度
+            Text("字").font(.body).hidden()
+
+            Button { isConfirmingDeletePlaylist = true } label: {
+                HStack(spacing: 4) {
+                    Text("playlists.delete")
+                    Text("⌘D")
+                }
+                .foregroundColor(.red)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 3)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.red, lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut("d", modifiers: .command)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .sheet(isPresented: $isEditingSongs) { editSongsSheet }
+        .confirmationDialog(
+            "playlists.delete.confirm.title",
+            isPresented: $isConfirmingDeletePlaylist,
+            presenting: openedPlaylist
+        ) { playlist in
+            Button("playlists.delete", role: .destructive) { deleteOpenedPlaylist(playlist) }
+            Button("common.cancel", role: .cancel) {}
+        } message: { playlist in
+            Text(deletePlaylistMessage(for: playlist))
+        }
+    }
+
+    private func deleteOpenedPlaylist(_ playlist: Playlist) {
+        PlaylistStore().delete(id: playlist.id)
+        Diagnostics.log("删除歌单《\(playlist.name)》")
+        openedPlaylist = nil
+    }
+
+    private func deletePlaylistMessage(for playlist: Playlist) -> String {
+        let format = Bundle.main.localizedString(
+            forKey: "playlists.delete.confirm.message", value: nil, table: nil
+        )
+        return String(format: format, playlist.name)
     }
 
     /// 编辑歌曲：与新建歌单同一个窗口，只是名字与已有曲目都已经填好。
@@ -763,6 +807,18 @@ struct ContentView: View {
         songs = ordered
         orderStore.save(ordered)
         isCustomOrder = true
+    }
+
+    /// 歌单内拖动排序：写回歌单本身，资料库顺序不受影响。
+    ///
+    /// 拖动时列表显示的就是歌单的全部曲目（搜索时已禁用拖动），所以这里拿到的顺序就是
+    /// 歌单的新顺序。第一首变了，歌单列表里的封面也会跟着换。
+    private func persistPlaylistOrder(_ ordered: [Song]) {
+        guard let playlist = openedPlaylist else { return }
+        let ids = ordered.map(\.id)
+        guard let updated = PlaylistStore().update(id: playlist.id, name: playlist.name, songIDs: ids) else { return }
+        Diagnostics.log("调整歌单《\(updated.name)》的顺序，共 \(ids.count) 首")
+        openedPlaylist = updated
     }
 
     /// 恢复 Apple Music 资料库的原始顺序
