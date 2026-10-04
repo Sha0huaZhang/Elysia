@@ -63,8 +63,9 @@ struct PlaylistsView: View {
 
             Button(action: { isCreating = true }) {
                 HStack(spacing: 4) {
-                    Text("playlists.new")
-                    Text("⌘N").foregroundColor(.secondary)
+                    Text("playlists.new").foregroundColor(.blue)
+                    // 快捷键用更柔和的蓝，不与歌单名抢眼
+                    Text("⌘N").foregroundColor(Color.blue.opacity(0.55))
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 3)
