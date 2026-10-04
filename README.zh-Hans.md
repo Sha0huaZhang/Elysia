@@ -61,6 +61,10 @@ Apple Music 缺失的图形界面
 2. 打开 DMG，把 **Elysia** 拖到 **Applications** 快捷方式上。
 3. 从「应用程序」启动 Elysia，macOS 询问时允许它控制 **「音乐」**。
 
+<p align="center">
+  <img src="images/install.png" alt="把 Elysia 拖到 Applications 快捷方式上" width="60%">
+</p>
+
 ### 如果 macOS 拒绝打开
 
 发布的版本已签名但**未公证**（公证需要付费的 Apple 开发者账号），因此

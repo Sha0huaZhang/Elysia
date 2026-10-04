@@ -71,6 +71,10 @@ restore the default order in one click.
 2. Open the DMG and drag **Elysia** onto the **Applications** shortcut.
 3. Launch Elysia from Applications and allow it to control **Music** when macOS asks.
 
+<p align="center">
+  <img src="images/install.png" alt="Drag Elysia onto the Applications shortcut" width="60%">
+</p>
+
 ### If macOS refuses to open it
 
 Released builds are signed but not notarized, which needs a paid Apple Developer
