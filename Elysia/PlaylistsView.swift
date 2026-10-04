@@ -109,6 +109,7 @@ struct PlaylistsView: View {
             Diagnostics.log("未选中歌单，删除已忽略")
             return
         }
+        Diagnostics.log("请求删除歌单《\(target.name)》")
         pendingDelete = target
     }
 
@@ -141,8 +142,16 @@ struct PlaylistsView: View {
                         Button("playlists.editMenu") { startEditing(playlist) }
                             .keyboardShortcut("e", modifiers: .command)
                         Button("playlists.rename") { startRenaming(playlist) }
+                            .keyboardShortcut("r", modifiers: [.command, .shift])
                         Divider()
-                        Button("playlists.delete", role: .destructive) { pendingDelete = playlist }
+                        // role: .destructive 让菜单项显示为红色
+                        Button("playlists.delete", role: .destructive) {
+                            // 先选中这一行，再进入确认；这样即便快捷键在菜单外被触发，
+                            // 删除目标也与界面上被选中的那个一致，不会指向别处
+                            selection = playlist.id
+                            requestDelete()
+                        }
+                        .keyboardShortcut("d", modifiers: .command)
                     }
                 }
                 // 拖动调整歌单之间的先后。列表顺序就是存储顺序，拖完立即落盘。
@@ -272,6 +281,8 @@ struct PlaylistsView: View {
         if let id = selection, !playlists.contains(where: { $0.id == id }) {
             selection = nil
         }
+        // 刻意不默认选中第一行：删除是危险操作，必须先由用户明确选中要删的那个。
+        // 替用户预选，等于让 ⌘D 在一个用户没指定过的目标上生效。
     }
 
     private func delete(_ playlist: Playlist) {
