@@ -34,7 +34,9 @@
 "playlists.name.label"             = "Name";
 "playlists.name.placeholder"       = "Enter a playlist name";
 "playlists.duplicate"              = "A playlist with this name already exists";
+"playlists.name.required"          = "Enter a name for the playlist";
 "playlists.confirm"                = "Confirm";
+"playlists.back"                   = "Back to Playlists";
 "playlists.selectedCount"          = "%d selected";
 "playlists.songCount"              = "%d songs";
 "playlists.empty.title"            = "No playlists yet";

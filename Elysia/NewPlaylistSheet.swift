@@ -12,15 +12,17 @@ struct NewPlaylistSheet: View {
     let onConfirm: (String, [String]) -> Void
     let onCancel: () -> Void
 
-    /// 默认名字，直接可改
-    @State private var name = "UTF-8"
+    /// 歌单名，默认为空
+    @State private var name = ""
     @State private var query = ""
     @State private var selected: Set<String> = []
+    /// 用户在没有名称时按过「确认」，据此提示需要填名字
+    @State private var didAttemptWithoutName = false
 
     private var visibleSongs: [Song] { SongSearch.filter(songs, query: query) }
     private var trimmedName: String { name.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var isDuplicate: Bool { !trimmedName.isEmpty && nameExists(trimmedName) }
-    private var canConfirm: Bool { !trimmedName.isEmpty && !isDuplicate }
+    private var needsName: Bool { didAttemptWithoutName && trimmedName.isEmpty }
 
     /// 选中曲目的顺序一律按它们在歌曲列表里的先后，与点击次序无关，
     /// 这样同一个歌单每次建出来顺序都一样，可预期。
@@ -54,6 +56,10 @@ struct NewPlaylistSheet: View {
 
             if isDuplicate {
                 Text("playlists.duplicate")
+                    .font(.caption)
+                    .foregroundColor(.red)
+            } else if needsName {
+                Text("playlists.name.required")
                     .font(.caption)
                     .foregroundColor(.red)
             }
@@ -127,6 +133,10 @@ struct NewPlaylistSheet: View {
     }
 
     // MARK: 底部：已选数量 + 取消 / 确认
+    //
+    // 两个按钮沿用歌单页那对按钮的样式：取消与「删除歌单」同为红色，确认与「新建歌单」
+    // 同为蓝色，快捷键用同色更淡的一档。都不使用 .disabled——禁用态会把颜色一起调暗，
+    // 看起来发灰；改成点按时在动作里判断，并按需要给出提示文字。
     private var footer: some View {
         HStack(spacing: 12) {
             Text(selectedCountText)
@@ -136,31 +146,44 @@ struct NewPlaylistSheet: View {
             Spacer()
 
             Button(action: onCancel) {
-                Text("common.cancel")
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 3)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(Color.secondary.opacity(0.35), lineWidth: 1)
-                    )
-            }
-            .buttonStyle(.plain)
-            .keyboardShortcut(.cancelAction)
-
-            Button(action: confirm) {
                 HStack(spacing: 4) {
-                    Text("playlists.confirm")
-                    Text("⌘Enter").foregroundColor(.secondary)
+                    Text("common.cancel").foregroundColor(.red)
+                    // 快捷键提示用更柔和的红，不与按钮名抢眼；Esc 与 ⌘. 是等价的两种按法
+                    Text("Esc").foregroundColor(Color.red.opacity(0.55))
+                    Text("或").foregroundColor(Color.red.opacity(0.55))
+                    Text("⌘.").foregroundColor(Color.red.opacity(0.55))
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 3)
                 .overlay(
                     RoundedRectangle(cornerRadius: 6)
-                        .stroke(Color.secondary.opacity(0.35), lineWidth: 1)
+                        .stroke(Color.red, lineWidth: 1)
                 )
             }
             .buttonStyle(.plain)
-            .disabled(!canConfirm)
+            .keyboardShortcut(.cancelAction)
+
+            // ⌘. 是 macOS 上「取消」的另一种标准按法。一个按钮只能挂一个快捷键，
+            // 所以另外放一个零尺寸按钮承载它——同样调用取消，不占布局、不可点中。
+            Button(action: onCancel) { EmptyView() }
+                .keyboardShortcut(".", modifiers: .command)
+                .frame(width: 0, height: 0)
+                .opacity(0)
+                .accessibilityHidden(true)
+
+            Button(action: confirm) {
+                HStack(spacing: 4) {
+                    Text("playlists.confirm").foregroundColor(.blue)
+                    Text("⌘Enter").foregroundColor(Color.blue.opacity(0.55))
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 3)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.blue, lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
             .keyboardShortcut(.return, modifiers: .command)
         }
         .padding(16)
@@ -182,7 +205,11 @@ struct NewPlaylistSheet: View {
     }
 
     private func confirm() {
-        guard canConfirm else { return }
+        guard !trimmedName.isEmpty else {
+            didAttemptWithoutName = true
+            return
+        }
+        guard !isDuplicate else { return }
         onConfirm(trimmedName, orderedSelection)
     }
 }

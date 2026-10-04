@@ -16,6 +16,8 @@ struct ContentView: View {
     /// 造成反复申请（实测出现同一首 0.07 秒内申请 5 次）。冷却可挡住这类重复。
     @State private var takeoverBlockedUntil: Date? = nil
     @State private var selectedItem: SidebarItem? = .songs
+    /// 当前打开的 Elysia 歌单；nil 表示停在歌单列表
+    @State private var openedPlaylist: Playlist? = nil
     /// 侧边栏搜索框的文字
     @State private var searchText = ""
 
@@ -128,6 +130,10 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             refreshLibrary()
         }
+        // 换到别的栏目时退出歌单，回来看到的是歌单列表而不是上次那个歌单
+        .onChange(of: selectedItem) { _ in
+            openedPlaylist = nil
+        }
     }
 
     // MARK: - 侧边栏栏目对应的详情内容
@@ -146,7 +152,11 @@ struct ContentView: View {
         case .songs, nil:
             playerView
         case .playlists:
-            PlaylistsView(songs: songs)
+            if openedPlaylist != nil {
+                playlistDetailView
+            } else {
+                PlaylistsView(songs: songs, onOpen: { openedPlaylist = $0 })
+            }
         case .albums, .start:
             ComingSoonView(item: selectedItem ?? .songs)
         }
@@ -154,52 +164,123 @@ struct ContentView: View {
 
     private var playerView: some View {
         VStack(spacing: 0) {
-            PlayerControlBar(
-                isPlaying: isPlaying,
-                repeatMode: repeatMode,
-                title: nowPlayingTitle,
-                artist: nowPlayingArtist,
-                artwork: nowPlayingArtwork,
-                position: $position,
-                duration: duration,
-                isDragging: $isDragging,
-                dragValue: $dragValue,
-                volume: $volume,
-                isDraggingVolume: $isDraggingVolume,
-                dragVolumeValue: $dragVolumeValue,
-                onPrevious: { playOffset(-1) },
-                onNext: { playOffset(1) },
-                onToggleRepeat: { cycleRepeatMode() },
-                onTogglePlayPause: { togglePlayPause() },
-                onSeek: { seconds in
-                    MusicData.seek(to: seconds)
-                    // 关键：立刻把显示值也移到目标。否则松手瞬间 isDragging 变 false，
-                    // 显示值切回尚未更新的 position（旧位置），滑块先弹回去，等下一次
-                    // 轮询（最长 0.5s）才跳回来——看起来就是「跳一下」。
-                    position = seconds
-                    pendingSeekTarget = seconds
-                },
-                onVolumeChange: { newVolume in
-                    applyVolumeWhileDragging(newVolume)
-                },
-                onVolumeCommit: { newVolume in
-                    commitVolume(newVolume)
-                }
-            )
+            controlBar
             Divider()
-            SongListView(
-                songs: visibleSongs,
-                isLoading: isLoading,
-                nowPlayingID: nowPlayingID,
-                isPlaying: isPlaying,
-                isOnline: network.isOnline,
+            songList(
+                displayed: visibleSongs,
                 // 搜索结果只是原列表的视图，拖动会打乱真实顺序，因此搜索时禁用
                 isReorderEnabled: !isSearching,
-                isSearching: isSearching,
-                onPlay: playFromList,
                 onReorder: persistOrder
             )
         }
+    }
+
+    /// 进入某个歌单后的详情页。
+    ///
+    /// 与「歌曲」页用同一个控制条和同一个歌曲列表，因此样式与操作完全一致；区别只有
+    /// 列表来源，以及顶部多一条返回。
+    private var playlistDetailView: some View {
+        VStack(spacing: 0) {
+            playlistDetailBar
+            Divider()
+            controlBar
+            Divider()
+            songList(
+                displayed: visibleSongs,
+                // 歌单的顺序调整留待后续；先把「歌曲」页的拖动挡在外面，避免改了这里却存不进歌单
+                isReorderEnabled: false,
+                onReorder: persistOrder
+            )
+        }
+    }
+
+    /// 歌单详情顶部：返回歌单（⌘[）+ 当前歌单名
+    private var playlistDetailBar: some View {
+        HStack(spacing: 0) {
+            Button {
+                openedPlaylist = nil
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "chevron.left")
+                    Text("playlists.back")
+                    Text("⌘[").foregroundColor(Color.blue.opacity(0.55))
+                }
+                .foregroundColor(.blue)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 3)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.blue, lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut("[", modifiers: .command)
+
+            // 一个文字的宽度
+            Text("字").font(.body).hidden()
+
+            Text(openedPlaylist?.name ?? "")
+                .font(.title3)
+                .foregroundColor(.primary)
+
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+    }
+
+    /// 播放控制条。两个页面共用，保证操作与样式一致。
+    private var controlBar: some View {
+        PlayerControlBar(
+            isPlaying: isPlaying,
+            repeatMode: repeatMode,
+            title: nowPlayingTitle,
+            artist: nowPlayingArtist,
+            artwork: nowPlayingArtwork,
+            position: $position,
+            duration: duration,
+            isDragging: $isDragging,
+            dragValue: $dragValue,
+            volume: $volume,
+            isDraggingVolume: $isDraggingVolume,
+            dragVolumeValue: $dragVolumeValue,
+            onPrevious: { playOffset(-1) },
+            onNext: { playOffset(1) },
+            onToggleRepeat: { cycleRepeatMode() },
+            onTogglePlayPause: { togglePlayPause() },
+            onSeek: { seconds in
+                MusicData.seek(to: seconds)
+                // 关键：立刻把显示值也移到目标。否则松手瞬间 isDragging 变 false，
+                // 显示值切回尚未更新的 position（旧位置），滑块先弹回去，等下一次
+                // 轮询（最长 0.5s）才跳回来——看起来就是「跳一下」。
+                position = seconds
+                pendingSeekTarget = seconds
+            },
+            onVolumeChange: { newVolume in
+                applyVolumeWhileDragging(newVolume)
+            },
+            onVolumeCommit: { newVolume in
+                commitVolume(newVolume)
+            }
+        )
+    }
+
+    private func songList(
+        displayed: [Song],
+        isReorderEnabled: Bool,
+        onReorder: @escaping ([Song]) -> Void
+    ) -> some View {
+        SongListView(
+            songs: displayed,
+            isLoading: isLoading,
+            nowPlayingID: nowPlayingID,
+            isPlaying: isPlaying,
+            isOnline: network.isOnline,
+            isReorderEnabled: isReorderEnabled,
+            isSearching: isSearching,
+            onPlay: playFromList,
+            onReorder: onReorder
+        )
     }
 
     /// 把这次读库的结果写进日志：曲目数、位置范围、按自定义顺序补位的新歌、
@@ -435,7 +516,7 @@ struct ContentView: View {
 
                 // 单曲循环不依赖歌单；列表循环 / 不循环必须能查到当前曲目才算得出下一首，
                 // 因此歌单尚未读完时要明确跳过（并记录），否则会静默失效、被 Music 队列接走。
-                let canAct = self.repeatMode == .one || self.songs.contains { $0.id == status.persistentID }
+                let canAct = self.repeatMode == .one || self.activeSongs.contains { $0.id == status.persistentID }
                 let due = TrackEnd.shouldTakeOver(remaining: remaining, isPlaying: status.isPlaying)
                 if !inFlight, !cooling, let id = status.persistentID, canAct, due {
                     Diagnostics.log("曲末接管：\(self.rowLabel(of: id)) \(self.name(of: id)) 模式=\(self.repeatMode.rawValue) 剩余=\(String(format: "%.1f", remaining ?? -1))s")
@@ -446,7 +527,7 @@ struct ContentView: View {
                     var why: [String] = []
                     if inFlight { why.append("有切歌/跳转在途") }
                     if cooling { why.append("冷却中") }
-                    if !canAct { why.append(self.songs.isEmpty ? "歌单还没读完" : "当前曲不在歌单里") }
+                    if !canAct { why.append(self.activeSongs.isEmpty ? "歌单还没读完" : "当前曲不在歌单里") }
                     Diagnostics.log("该接管却跳过：\(why.joined(separator: "、"))")
                 }
 
@@ -465,7 +546,7 @@ struct ContentView: View {
     /// 与自动接管、上一首/下一首分开：只有这里会替用户挡下「离线又没下载」的曲目并
     /// 给出说明。自动接管若也弹窗，切歌时会连续弹；「下一首」若也弹窗，连按就更糟。
     private func playFromList(_ id: String) {
-        guard let song = songs.first(where: { $0.id == id }) else { return }
+        guard let song = activeSongs.first(where: { $0.id == id }) else { return }
 
         // 已经在播的这首：此时按钮是「暂停」，与能否离线播放无关，照旧放行
         if id == nowPlayingID { playSong(id); return }
@@ -504,12 +585,12 @@ struct ContentView: View {
 
     /// 日志里显示歌名，便于人工核对（找不到就显示截断的 ID）
     private func name(of id: String) -> String {
-        songs.first { $0.id == id }.map { "《\($0.title)》" } ?? "id:\(id.prefix(8))"
+        activeSongs.first { $0.id == id }.map { "《\($0.title)》" } ?? "id:\(id.prefix(8))"
     }
 
     /// 日志里用位置标识曲目。位置与界面左侧显示的编号、诊断清单里的编号完全一致。
     private func rowLabel(of id: String) -> String {
-        songs.first { $0.id == id }?.positionText ?? "不在歌单里"
+        activeSongs.first { $0.id == id }?.positionText ?? "不在歌单里"
     }
 
     /// 上一首 / 下一首。
@@ -521,7 +602,7 @@ struct ContentView: View {
     /// 往下走，此时缓存的 nowPlayingID 已经过期，用它推算就会跳到错的那一首（甚至
     /// 往回跳）。所以按下的这一刻现问一次，确保锚点与 Music 的实际进度一致。
     private func playOffset(_ offset: Int, fromID: String? = nil) {
-        guard !songs.isEmpty else { return }
+        guard !activeSongs.isEmpty else { return }
 
         if let anchorID = fromID ?? pendingSongID {
             advance(offset: offset, anchorID: anchorID)
@@ -554,8 +635,8 @@ struct ContentView: View {
             // 曲目而非资料库曲目），就无从推算。此时宁可不动作——SongAdvance 对「锚点
             // 未知」的处理是从列表两端开始，那会跳到第一首毫不相干的歌，正是「跳错歌
             // 又找不出规律」的另一个来源。
-            guard let found = songs.firstIndex(where: { $0.id == id }) else {
-                Diagnostics.log("advance 放弃：锚点 \(name(of: id)) 不在 Elysia 列表里（共 \(songs.count) 首）")
+            guard let found = activeSongs.firstIndex(where: { $0.id == id }) else {
+                Diagnostics.log("advance 放弃：锚点 \(name(of: id)) 不在 Elysia 列表里（共 \(activeSongs.count) 首）")
                 return
             }
             anchorIndex = found
@@ -565,7 +646,7 @@ struct ContentView: View {
 
         guard let targetIndex = SongAdvance.targetIndex(
             anchorIndex: anchorIndex,
-            count: songs.count,
+            count: activeSongs.count,
             offset: offset,
             repeatAll: repeatMode == .all
         ) else {
@@ -574,9 +655,9 @@ struct ContentView: View {
         }
 
         let anchorText = anchorID.map { "\(rowLabel(of: $0)) \(name(of: $0))" } ?? "无"
-        let target = songs[targetIndex]
+        let target = activeSongs[targetIndex]
         Diagnostics.log("advance offset=\(offset) 锚点 \(anchorText) -> 目标 \(rowLabel(of: target.id)) 《\(target.title)》")
-        playSong(songs[targetIndex].id)
+        playSong(activeSongs[targetIndex].id)
     }
 
     private func cycleRepeatMode() {
@@ -601,9 +682,9 @@ struct ContentView: View {
         case .all:
             playOffset(1, fromID: id)
         case .off:
-            guard let index = songs.firstIndex(where: { $0.id == id }) else { return }
-            if index + 1 < songs.count {
-                playSong(songs[index + 1].id)
+            guard let index = activeSongs.firstIndex(where: { $0.id == id }) else { return }
+            if index + 1 < activeSongs.count {
+                playSong(activeSongs[index + 1].id)
             } else {
                 MusicData.pause()
             }
@@ -622,9 +703,19 @@ struct ContentView: View {
     /// 当前是否在搜索
     private var isSearching: Bool { SongSearch.isActive(searchText) }
 
+    /// 当前详情页的曲目：「歌曲」页是资料库列表，进入歌单后是这个歌单的曲目。
+    ///
+    /// 显示、搜索、编号、以及「上一首 / 下一首」都以它为准，所以「看到的列表就是会播放
+    /// 的顺序」。歌单里对不上资料库的曲目（已被删除、或读不出属性的坏条目）在这里就被
+    /// 丢掉，编号因此始终连续。
+    private var activeSongs: [Song] {
+        guard let playlist = openedPlaylist else { return songs }
+        return playlist.resolvedSongs(in: Song.index(songs))
+    }
+
     /// 列表实际显示的歌曲：搜索时是匹配结果，否则是完整列表
     private var visibleSongs: [Song] {
-        SongSearch.filter(songs, query: searchText)
+        SongSearch.filter(activeSongs, query: searchText)
     }
 
     /// 拖动排序后保存新的顺序

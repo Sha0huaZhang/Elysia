@@ -20,6 +20,30 @@ struct Playlist: Identifiable, Codable, Hashable {
     }
 }
 
+extension Playlist {
+    /// 歌单里能真正对上的曲目，按歌单内的顺序。
+    ///
+    /// 资料库里已经删掉的曲目、以及那个读不出属性的坏条目，在这里被丢掉。调用方拿到的
+    /// 数量就是「实际能显示的曲目数」，据此编号与歌曲数都不会出现断号：编号按这个数组
+    /// 的位置重新从 1 排，而不是用曲目在资料库中的位置——那个位置会因为坏条目留下空缺。
+    ///
+    /// 同一个 ID 重复出现时只保留第一次，避免同一首歌在歌单里出现两遍。
+    func resolvedSongs(in index: [String: Song]) -> [Song] {
+        var seen = Set<String>()
+        return songIDs.compactMap { id in
+            guard seen.insert(id).inserted else { return nil }
+            return index[id]
+        }
+    }
+}
+
+extension Song {
+    /// 按 persistent ID 建索引，供歌单把存的 ID 还原成曲目。
+    static func index(_ songs: [Song]) -> [String: Song] {
+        Dictionary(songs.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+    }
+}
+
 /// 歌单的持久化。
 ///
 /// 与 SongOrderStore 一样只存 ID，曲目本身仍以 Apple Music 资料库为准：曲目被删掉后
@@ -35,8 +59,14 @@ struct PlaylistStore {
         self.key = key
     }
 
+    /// 歌单存成 JSON 文本（UTF-8）放在 defaults 里。
+    ///
+    /// 用文本而不是二进制：`defaults read org.macwave.Elysia org.macwave.elysia.playlists`
+    /// 就能直接看到内容，排查问题时不必再解码一遍。歌单名里的中文、emoji 都以 UTF-8
+    /// 原样保存。
     var all: [Playlist] {
-        guard let data = defaults.data(forKey: key),
+        guard let text = defaults.string(forKey: key),
+              let data = text.data(using: .utf8),
               let list = try? JSONDecoder().decode([Playlist].self, from: data) else { return [] }
         return list
     }
@@ -79,7 +109,8 @@ struct PlaylistStore {
     }
 
     private func save(_ list: [Playlist]) {
-        guard let data = try? JSONEncoder().encode(list) else { return }
-        defaults.set(data, forKey: key)
+        guard let data = try? JSONEncoder().encode(list),
+              let text = String(data: data, encoding: .utf8) else { return }
+        defaults.set(text, forKey: key)
     }
 }

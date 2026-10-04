@@ -7,6 +7,8 @@ import SwiftUI
 struct PlaylistsView: View {
     /// 资料库全部曲目，供新建歌单时挑选
     let songs: [Song]
+    /// 双击某个歌单：进入它（由上层切换到歌单详情页）
+    let onOpen: (Playlist) -> Void
 
     private let store = PlaylistStore()
 
@@ -123,13 +125,15 @@ struct PlaylistsView: View {
         } else {
             List(selection: $selection) {
                 ForEach(playlists) { playlist in
-                    HStack(spacing: 8) {
-                        Text(playlist.name)
-                        Spacer()
-                        Text(songCountText(playlist.songIDs.count))
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                    }
+                    PlaylistRow(
+                        playlist: playlist,
+                        songs: resolvedSongs(playlist),
+                        onOpen: {
+                            selection = playlist.id
+                            Diagnostics.log("进入歌单《\(playlist.name)》")
+                            onOpen(playlist)
+                        }
+                    )
                     .tag(playlist.id)
                 }
             }
@@ -137,18 +141,24 @@ struct PlaylistsView: View {
         }
     }
 
+    /// 歌单里能真正对上的曲目。
+    ///
+    /// 资料库里已经删掉的曲目、以及那个读不出属性的坏条目，在这里都会被丢掉：歌单只存
+    /// ID，对不上就不显示。封面取第一首能对上的，歌曲数也按能对上的算。丢掉了几首会记进
+    /// 日志，界面上不打扰。
+    private func resolvedSongs(_ playlist: Playlist) -> [Song] {
+        let resolved = playlist.resolvedSongs(in: Song.index(songs))
+        if resolved.count != playlist.songIDs.count {
+            Diagnostics.log("歌单《\(playlist.name)》有 \(playlist.songIDs.count - resolved.count) 首对不上资料库，已略过")
+        }
+        return resolved
+    }
+
     private var deleteMessage: String {
         let format = Bundle.main.localizedString(
             forKey: "playlists.delete.confirm.message", value: nil, table: nil
         )
         return String(format: format, selectedPlaylist?.name ?? "")
-    }
-
-    private func songCountText(_ count: Int) -> String {
-        let format = Bundle.main.localizedString(
-            forKey: "playlists.songCount", value: nil, table: nil
-        )
-        return String(format: format, count)
     }
 
     private func reload() {
@@ -161,5 +171,69 @@ struct PlaylistsView: View {
         Diagnostics.log("删除歌单《\(target.name)》")
         reload()
         selection = nil
+    }
+}
+
+// MARK: - 歌单行
+//
+// 与歌曲行同一套样式：左侧封面取歌单第一首的封面，右边第一行歌单名、第二行歌曲数
+// （对应歌曲行里歌名与艺人的位置）。双击进入歌单，进入后与「歌曲」页完全一致。
+private struct PlaylistRow: View {
+    let playlist: Playlist
+    /// 已与资料库对上的曲目（对不上的已丢掉），封面与数量都按这个算
+    let songs: [Song]
+    let onOpen: () -> Void
+
+    @State private var artworkImage: NSImage? = nil
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Group {
+                if let image = artworkImage {
+                    Image(nsImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } else {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.gray.opacity(0.3))
+                }
+            }
+            .frame(width: 40, height: 40)
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(playlist.name)
+                    .font(.body)
+                Text(songCountText(songs.count))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 4)
+        .contentShape(Rectangle())
+        .task(id: songs.first?.id) { await loadArtwork() }
+        .onTapGesture(count: 2) { onOpen() }
+    }
+
+    private func songCountText(_ count: Int) -> String {
+        let format = Bundle.main.localizedString(
+            forKey: "playlists.songCount", value: nil, table: nil
+        )
+        return String(format: format, count)
+    }
+
+    private func loadArtwork() async {
+        guard let first = songs.first else {
+            await MainActor.run { artworkImage = nil }
+            return
+        }
+        let image = await MusicData.fetchArtwork(persistentID: first.id)
+        await MainActor.run { self.artworkImage = image }
     }
 }

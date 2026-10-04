@@ -33,7 +33,9 @@
 "playlists.name.label"             = "歌单名称";
 "playlists.name.placeholder"       = "输入歌单名称";
 "playlists.duplicate"              = "已有同名歌单";
+"playlists.name.required"          = "请输入歌单名称";
 "playlists.confirm"                = "确认";
+"playlists.back"                   = "返回歌单";
 "playlists.selectedCount"          = "已选 %d 首";
 "playlists.songCount"              = "%d 首";
 "playlists.empty.title"            = "还没有歌单";
