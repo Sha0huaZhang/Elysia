@@ -46,6 +46,8 @@
 "playlists.empty.title"            = "还没有歌单";
 "playlists.empty.hint"             = "点按「新建歌单」创建一个。歌单只保存在 Elysia 中，不会写入 Apple Music。";
 "playlists.delete.confirm.title"   = "删除歌单";
+"playlists.delete.pick"            = "选择要删除的歌单";
+"playlists.delete.pickHint"        = "请先在上面选中一个歌单。";
 "playlists.delete.confirm.message" = "「%@」将被删除。歌单只存在于 Elysia，删除后无法恢复。";
 
 /* 设置 — 语言 */

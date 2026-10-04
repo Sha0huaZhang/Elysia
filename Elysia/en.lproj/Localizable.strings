@@ -47,6 +47,8 @@
 "playlists.empty.title"            = "No playlists yet";
 "playlists.empty.hint"             = "Press New Playlist to create one. Playlists are kept in Elysia and are never written to Apple Music.";
 "playlists.delete.confirm.title"   = "Delete Playlist";
+"playlists.delete.pick"            = "Choose a Playlist to Delete";
+"playlists.delete.pickHint"        = "Select a playlist above first.";
 "playlists.delete.confirm.message" = "“%@” will be deleted. Playlists live in Elysia only, so this cannot be undone.";
 
 /* Settings — language */

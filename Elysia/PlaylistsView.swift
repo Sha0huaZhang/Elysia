@@ -21,6 +21,11 @@ struct PlaylistsView: View {
     @State private var renameText = ""
     /// 待确认删除的歌单。删除一律先经这一步，不直接删。
     @State private var pendingDelete: Playlist? = nil
+    /// 没有选中项时，改为从列表里挑一个要删的歌单
+    @State private var isChoosingDelete = false
+    /// 挑选窗口里选中的歌单；确认后交给 pendingDelete，走同一个二次确认
+    @State private var pickerSelection: UUID? = nil
+    @State private var chosenForDelete: Playlist? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -37,6 +42,15 @@ struct PlaylistsView: View {
             Button("playlists.confirm") { commitRename() }
         } message: {
             renameMessage
+        }
+        // 挑选窗口关闭后再交给二次确认：同一个循环里接连弹出两层弹窗，SwiftUI 会漏掉一层
+        .sheet(isPresented: $isChoosingDelete, onDismiss: {
+            if let chosen = chosenForDelete {
+                chosenForDelete = nil
+                pendingDelete = chosen
+            }
+        }) {
+            deletePickerSheet
         }
         .confirmationDialog(
             "playlists.delete.confirm.title",
@@ -135,12 +149,100 @@ struct PlaylistsView: View {
     }
 
     private func requestDelete() {
-        guard let target = selectedPlaylist else {
-            Diagnostics.log("未选中歌单，删除已忽略")
+        if let target = selectedPlaylist {
+            Diagnostics.log("请求删除歌单《\(target.name)》")
+            pendingDelete = target
             return
         }
-        Diagnostics.log("请求删除歌单《\(target.name)》")
-        pendingDelete = target
+        // 没有选中项时不能替用户挑一个（删除是危险操作），也不能按了没反应。
+        // 改成弹出列表让他自己明确选一个，再走同一个二次确认。
+        pickerSelection = nil
+        Diagnostics.log("未选中歌单，改为从列表中选择要删除的")
+        isChoosingDelete = true
+    }
+
+    /// 没有选中项时用来挑选要删除的歌单。
+    ///
+    /// 这里的行没有单击/双击手势，因此 List 的原生选中是可靠的：单击即可选中。
+    private var deletePickerSheet: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("playlists.delete.pick")
+                    .font(.headline)
+                Spacer()
+            }
+            .padding(16)
+
+            Divider()
+
+            if playlists.isEmpty {
+                Text("playlists.empty.title")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List(playlists, selection: $pickerSelection) { playlist in
+                    HStack(spacing: 8) {
+                        Text(playlist.name)
+                        Spacer()
+                        Text(songCountText(resolvedSongs(playlist).count))
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
+                    .tag(playlist.id)
+                }
+                .listStyle(.plain)
+            }
+
+            Divider()
+
+            HStack(spacing: 12) {
+                if pickerSelection == nil {
+                    Text("playlists.delete.pickHint")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Button {
+                    isChoosingDelete = false
+                } label: {
+                    HStack(spacing: 4) {
+                        Text("common.cancel").foregroundColor(.red)
+                        Text("Esc").foregroundColor(Color.red.opacity(0.55))
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 3)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6).stroke(Color.red, lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut(.cancelAction)
+
+                Button(action: chooseForDelete) {
+                    HStack(spacing: 4) {
+                        Text("playlists.delete").foregroundColor(.white)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 3)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(pickerSelection == nil ? Color.red.opacity(0.35) : Color.red)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(16)
+        }
+        .frame(width: 420, height: 420)
+    }
+
+    private func chooseForDelete() {
+        guard let id = pickerSelection, let target = playlists.first(where: { $0.id == id }) else { return }
+        Diagnostics.log("从列表中选择删除《\(target.name)》")
+        chosenForDelete = target
+        isChoosingDelete = false
     }
 
     @ViewBuilder
@@ -386,13 +488,6 @@ private struct PlaylistRow: View {
         .simultaneousGesture(TapGesture(count: 1).onEnded { onSelect() })
     }
 
-    private func songCountText(_ count: Int) -> String {
-        let format = Bundle.main.localizedString(
-            forKey: "playlists.songCount", value: nil, table: nil
-        )
-        return String(format: format, count)
-    }
-
     private func loadArtwork() async {
         guard let first = songs.first else {
             await MainActor.run { artworkImage = nil }
@@ -401,4 +496,14 @@ private struct PlaylistRow: View {
         let image = await MusicData.fetchArtwork(persistentID: first.id)
         await MainActor.run { self.artworkImage = image }
     }
+}
+
+/// 「N 首」的本地化文案。
+///
+/// 歌单行、挑选窗口都用这一份：措辞只在一处定义，两个地方不会各说各话。
+private func songCountText(_ count: Int) -> String {
+    let format = Bundle.main.localizedString(
+        forKey: "playlists.songCount", value: nil, table: nil
+    )
+    return String(format: format, count)
 }
