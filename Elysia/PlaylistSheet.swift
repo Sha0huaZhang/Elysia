@@ -206,11 +206,13 @@ struct PlaylistSheet: View {
         // ⌘. 是 macOS 上「取消」的另一种标准按法。一个按钮只能挂一个快捷键，所以另放
         // 一个零尺寸按钮承载它。放在 background 里是为了不参与上面的布局——夹在两个
         // 按钮之间的话，HStack 会在它两侧各留一份间距，把那两个按钮撑开一倍。
+        // allowsHitTesting(false) 必不可少：opacity(0) 只是看不见，不影响命中测试，
+        // 而 frame 又不裁剪，按钮会以自身尺寸叠在内容上，把点击吃掉。
         .background(
             Button(action: onCancel) { EmptyView() }
                 .keyboardShortcut(".", modifiers: .command)
-                .frame(width: 0, height: 0)
                 .opacity(0)
+                .allowsHitTesting(false)
                 .accessibilityHidden(true)
         )
     }

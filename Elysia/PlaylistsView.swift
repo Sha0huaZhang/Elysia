@@ -48,14 +48,17 @@ struct PlaylistsView: View {
         } message: { playlist in
             Text(deleteMessage(for: playlist))
         }
-        // 选中某个歌单后，编辑与重命名也要能直接用快捷键，不必先右键。
-        // 放在 background 里是为了不参与上面的布局（与新建歌单对话窗里 ⌘. 同样的做法）。
-        .background(selectionShortcuts)
     }
 
     /// 选中歌单后可用的快捷键。
     ///
     /// 与 ⌘D 一致：没有选中时什么都不做。这些操作都要有明确的目标，不能替用户猜是哪一个。
+    ///
+    /// 两个必须注意的地方：
+    /// 1. `allowsHitTesting(false)`——`.opacity(0)` 只是看不见，并不影响命中测试，
+    ///    而 `.frame(width: 0, height: 0)` 也不会裁剪，按钮仍会以自身尺寸叠在内容上，
+    ///    把底下的单击吃掉（曾经因此让歌单列表整片点不动）。加了这个才真的不挡点击。
+    /// 2. 挂在工具栏这条窄带上，而不是整个页面：即使哪里没挡住，也只覆盖这条空白区域。
     private var selectionShortcuts: some View {
         Group {
             Button { runOnSelection(action: "编辑", startEditing) } label: { EmptyView() }
@@ -63,8 +66,8 @@ struct PlaylistsView: View {
             Button { runOnSelection(action: "重命名", startRenaming) } label: { EmptyView() }
                 .keyboardShortcut("r", modifiers: [.command, .shift])
         }
-        .frame(width: 0, height: 0)
         .opacity(0)
+        .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
 
@@ -121,6 +124,7 @@ struct PlaylistsView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
+        .background(selectionShortcuts)
     }
 
     private var isConfirmingDelete: Binding<Bool> {
