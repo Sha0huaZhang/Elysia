@@ -121,6 +121,45 @@
             padding-right: 70px;
         }
 
+        /* 「安装」步骤与示意图并排：左边文字、右边图片。
+           图片按比例缩放，窄屏时改为图片居中排在文字下方（文字本身不变）。 */
+        .install-row {
+            display: flex;
+            align-items: center;
+            gap: 28px;
+            margin-top: 18px;
+        }
+
+        .install-text {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        .install-shot {
+            flex: 0 1 46%;
+            width: 46%;
+            max-width: 46%;
+            height: auto;
+            border-radius: 10px;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+        }
+
+        @media (max-width: 690.98px) {
+            .install-row {
+                flex-direction: column;
+                align-items: center;
+                gap: 18px;
+            }
+            .install-text {
+                width: 100%;
+            }
+            .install-shot {
+                flex: 0 0 auto;
+                width: 100%;
+                max-width: 100%;
+            }
+        }
+
         .code-dollar {
             color: #ffffff;
             font-weight: bold;
@@ -552,6 +591,9 @@
         <h2 style="font-size: 1.8rem; border-bottom: 2px solid #E63B7A; padding-bottom: 10px; margin-top: 40px;" data-lang="en">Install</h2>
         <h2 style="font-size: 1.8rem; border-bottom: 2px solid #E63B7A; padding-bottom: 10px; margin-top: 40px;" data-lang="zh">安装</h2>
 
+        <div class="install-row">
+            <div class="install-text">
+
         <ol style="font-size: 1.1rem; line-height: 1.8; opacity: 0.9; padding-left: 1.2em;" data-lang="en">
             <li>Download <code style="background-color: #99244F; color: #ffffff; padding: 2px 6px; border-radius: 4px;">Elysia-1.1.0.dmg</code> from the <a href="Downloads/" style="color: #99244F;"><strong>Download Page</strong>(Click to open)</a> or the <a href="https://github.com/Sha0huaZhang/Elysia/releases" style="color: #99244F;">releases page</a>.</li>
             <li>Open the DMG and drag <strong>Elysia</strong> onto the <strong>Applications</strong> shortcut.</li>
@@ -562,6 +604,9 @@
             <li>打开 DMG，把 <strong>Elysia</strong> 拖到 <strong>Applications</strong> 快捷方式上。</li>
             <li>启动 Elysia，macOS 询问时允许它控制<strong>「音乐」</strong>。</li>
         </ol>
+            </div>
+            <img class="install-shot" src="images/install.png" alt="把 Elysia 拖到 Applications 快捷方式上">
+        </div>
 
         <p style="font-size: 1.1rem; line-height: 1.6; opacity: 0.9;" data-lang="en">
             The released builds are signed but <strong>not notarized</strong>, which needs a paid Apple Developer account. If macOS reports an unidentified developer, either right-click Elysia in Applications and choose <strong>Open</strong>, or clear the quarantine flag:
