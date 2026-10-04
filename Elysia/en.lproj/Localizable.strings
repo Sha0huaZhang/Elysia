@@ -73,6 +73,10 @@
 "welcome.message" = "After a first install or an update, if the song list is not recognized, open Settings → Library and press Refresh songs.\n\nRefreshing the song list, or restarting Elysia, is also needed every time your Apple Music library changes.\n\nIf it still does not work, quit Apple Music and try again.";
 "common.gotIt"    = "Got it";
 
+/* Offline notice */
+"offline.blocked.title"   = "Not Connected to the Internet";
+"offline.blocked.message" = "Songs that have not been downloaded cannot be played.";
+
 /* Shared */
 "common.cancel"  = "Cancel";
 "common.later"   = "Later";

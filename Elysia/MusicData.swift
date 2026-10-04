@@ -16,6 +16,14 @@ struct Song: Identifiable, Hashable {
 
     /// 日志里的位置标识，与诊断清单里的位置完全一致
     var positionText: String { libraryPosition > 0 ? "第\(libraryPosition)位" : "位置未知" }
+
+    /// 是否已下载到本机——决定了离线时能不能播。
+    ///
+    /// 判据是 Apple Music 能否给出这首歌的本地文件位置：已下载的读得到（订阅下载是
+    /// `.movpkg` 本地包，购买或导入的是普通音频文件），云端未下载的读不到、会报错。
+    /// 不用 `kind` 判断，那是本地化文字（中文系统显示「HLS媒体」，英文系统是别的），
+    /// 换语言就会失效。
+    let isDownloaded: Bool
 }
 
 // MARK: - 播放状态
@@ -119,6 +127,8 @@ enum MusicData {
     /// 就会少报一个（实测 129，实际有 130 个位置），按下标取既指不到排在最后的那首，
     /// 又会让整张列表从坏条目处开始错位一格。改为枚举后读回 Music 自己给出的 `index`，
     /// 位置就不依赖计数：坏条目自然留下一个空缺，并被自动跳过。
+    ///
+    /// 同时记下每首歌是否已下载（见 `Song.isDownloaded`），供离线时把播不了的曲目标灰。
     static func fetchAllSongs() -> [Song] {
         let script = """
         tell application "Music"
@@ -129,6 +139,7 @@ enum MusicData {
                 set nm to ""
                 set ar to ""
                 set idx to 0
+                set dld to 0
                 try
                     set pid to (persistent ID of t)
                 end try
@@ -141,7 +152,11 @@ enum MusicData {
                 try
                     set idx to (index of t)
                 end try
-                set output to output & idx & "|||" & pid & "|||" & nm & "|||" & ar & "\n"
+                try
+                    set p to (location of t)
+                    set dld to 1
+                end try
+                set output to output & idx & "|||" & pid & "|||" & nm & "|||" & ar & "|||" & dld & "\n"
             end repeat
             return output
         end tell
@@ -152,14 +167,20 @@ enum MusicData {
         var unpositioned = 0
         for line in result.split(separator: "\n") {
             let parts = line.components(separatedBy: "|||")
-            guard parts.count == 4 else { continue }
+            guard parts.count == 5 else { continue }
             // 坏条目连 persistent ID 都读不出，直接跳过（不放进列表）
             let id = parts[1].trimmingCharacters(in: .whitespaces)
             guard !id.isEmpty else { continue }
 
             let position = Int(parts[0]) ?? 0
             if position <= 0 { unpositioned += 1 }
-            songs.append(Song(id: id, title: parts[2], artist: parts[3], libraryPosition: position))
+            songs.append(Song(
+                id: id,
+                title: parts[2],
+                artist: parts[3],
+                libraryPosition: position,
+                isDownloaded: parts[4] == "1"
+            ))
         }
 
         // 按 Music 的位置排序；位置读不出的排在最后，宁可位置不准也不要丢掉这首歌
