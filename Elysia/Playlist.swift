@@ -21,6 +21,32 @@ struct Playlist: Identifiable, Codable, Hashable {
 }
 
 extension Playlist {
+    /// 选曲确认后写回的曲目顺序。
+    ///
+    /// 原本就在歌单里的曲目保留它们在歌单中的先后，新选的在后面按歌曲列表的先后接上：
+    /// 只补选几首歌时不会把已有顺序打乱。新建时 `existingOrder` 为空，结果就是歌曲列表
+    /// 的先后，与点击次序无关，同一个歌单每次建出来都一样。
+    ///
+    /// 资料库里已经没有的曲目会被丢掉：它本来就显示不出来，留着只会一直积在歌单里。
+    static func orderedSelection(
+        selected: Set<String>,
+        existingOrder: [String],
+        librarySongs: [Song]
+    ) -> [String] {
+        let inLibrary = Set(librarySongs.map(\.id))
+        var result: [String] = []
+        // seen 同时挡住原顺序里可能存在的重复项：显示端本就会去掉重复，写入端也一并去重，
+        // 免得一份带重复的旧数据被原样写回、一直传下去
+        var seen = Set<String>()
+        for id in existingOrder where selected.contains(id) && inLibrary.contains(id) {
+            if seen.insert(id).inserted { result.append(id) }
+        }
+        for song in librarySongs where selected.contains(song.id) && seen.insert(song.id).inserted {
+            result.append(song.id)
+        }
+        return result
+    }
+
     /// 歌单里能真正对上的曲目，按歌单内的顺序。
     ///
     /// 资料库里已经删掉的曲目、以及那个读不出属性的坏条目，在这里被丢掉。调用方拿到的
@@ -88,14 +114,30 @@ struct PlaylistStore {
         save(all.filter { $0.id != id })
     }
 
-    /// 是否已有同名歌单。
+    /// 编辑歌单：改名与改曲目。
+    ///
+    /// 名字为空、或与**别的**歌单同名时返回 nil。编辑时要把正在编辑的这个排除在重名
+    /// 检查之外，否则不改名也会被判成与自己重名。
+    func update(id: UUID, name: String, songIDs: [String]) -> Playlist? {
+        let stored = Self.trimmed(name)
+        guard !stored.isEmpty, !contains(name: stored, excluding: id) else { return nil }
+
+        var list = all
+        guard let index = list.firstIndex(where: { $0.id == id }) else { return nil }
+        list[index].name = stored
+        list[index].songIDs = songIDs
+        save(list)
+        return list[index]
+    }
+
+    /// 是否已有同名歌单。`excluding` 用于编辑时跳过自己。
     ///
     /// 比较时忽略首尾空白与大小写：用户在列表里看到的「UTF-8」和输入「utf-8」是同一个
     /// 名字，按字面区分只会建出两个看起来一样的歌单。比较用的规整只用于比较，
     /// 不影响实际存下来的名字。
-    func contains(name: String) -> Bool {
+    func contains(name: String, excluding id: UUID? = nil) -> Bool {
         let target = Self.comparisonKey(name)
-        return all.contains { Self.comparisonKey($0.name) == target }
+        return all.contains { $0.id != id && Self.comparisonKey($0.name) == target }
     }
 
     /// 去掉首尾空白

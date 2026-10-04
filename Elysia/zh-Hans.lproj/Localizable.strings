@@ -30,6 +30,8 @@
 "playlists.new"                    = "新建歌单";
 "playlists.delete"                 = "删除歌单";
 "playlists.new.title"              = "新建歌单";
+"playlists.edit"                   = "编辑歌曲";
+"playlists.edit.title"             = "编辑歌曲";
 "playlists.name.label"             = "歌单名称";
 "playlists.name.placeholder"       = "输入歌单名称";
 "playlists.duplicate"              = "已有同名歌单";

@@ -30,7 +30,8 @@ struct PlaylistsView: View {
         }
         .onAppear { reload() }
         .sheet(isPresented: $isCreating) {
-            NewPlaylistSheet(
+            PlaylistSheet(
+                titleKey: "playlists.new.title",
                 songs: songs,
                 nameExists: { store.contains(name: $0) },
                 onConfirm: { name, songIDs in

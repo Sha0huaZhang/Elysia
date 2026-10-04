@@ -31,6 +31,8 @@
 "playlists.new"                    = "New Playlist";
 "playlists.delete"                 = "Delete Playlist";
 "playlists.new.title"              = "New Playlist";
+"playlists.edit"                   = "Edit Songs";
+"playlists.edit.title"             = "Edit Songs";
 "playlists.name.label"             = "Name";
 "playlists.name.placeholder"       = "Enter a playlist name";
 "playlists.duplicate"              = "A playlist with this name already exists";

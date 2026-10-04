@@ -1,33 +1,57 @@
 import SwiftUI
 import AppKit
 
-// MARK: - 新建歌单
+// MARK: - 歌单选歌窗口
 //
-// 挑歌 + 起名。歌单只存进 Elysia 内部，这里不会写入 Apple Music。
-struct NewPlaylistSheet: View {
+// 挑歌 + 起名，新建与编辑共用：编辑时只是把名字与已有曲目预先填好，其余完全一样。
+// 歌单只存进 Elysia 内部，这里不会写入 Apple Music。
+struct PlaylistSheet: View {
+    /// 标题（新建歌单 / 编辑歌曲）
+    let titleKey: LocalizedStringKey
     let songs: [Song]
-    /// 该名字是否已被占用（同名歌单不允许再建）
+    /// 该名字是否已被占用（同名歌单不允许重复；编辑时会把正在编辑的这个排除在外）
     let nameExists: (String) -> Bool
-    /// 确认：带回名字与选中的曲目（按它们在歌曲列表里的先后）
+    /// 确认：带回名字与选中的曲目
     let onConfirm: (String, [String]) -> Void
     let onCancel: () -> Void
 
-    /// 歌单名，默认为空
-    @State private var name = ""
+    /// 编辑前的曲目顺序，用来保留歌单里原有的先后
+    private let initialOrder: [String]
+
+    @State private var name: String
     @State private var query = ""
-    @State private var selected: Set<String> = []
+    @State private var selected: Set<String>
     /// 用户在没有名称时按过「确认」，据此提示需要填名字
     @State private var didAttemptWithoutName = false
+
+    init(
+        titleKey: LocalizedStringKey,
+        songs: [Song],
+        initialName: String = "",
+        initialOrder: [String] = [],
+        nameExists: @escaping (String) -> Bool,
+        onConfirm: @escaping (String, [String]) -> Void,
+        onCancel: @escaping () -> Void
+    ) {
+        self.titleKey = titleKey
+        self.songs = songs
+        self.initialOrder = initialOrder
+        self.nameExists = nameExists
+        self.onConfirm = onConfirm
+        self.onCancel = onCancel
+        _name = State(initialValue: initialName)
+        _selected = State(initialValue: Set(initialOrder))
+    }
 
     private var visibleSongs: [Song] { SongSearch.filter(songs, query: query) }
     private var trimmedName: String { name.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var isDuplicate: Bool { !trimmedName.isEmpty && nameExists(trimmedName) }
     private var needsName: Bool { didAttemptWithoutName && trimmedName.isEmpty }
 
-    /// 选中曲目的顺序一律按它们在歌曲列表里的先后，与点击次序无关，
-    /// 这样同一个歌单每次建出来顺序都一样，可预期。
+    /// 选中曲目的顺序。规则见 Playlist.orderedSelection——原有序曲目保留歌单内的先后，
+    /// 新选的按歌曲列表先后接上。
     private var orderedSelection: [String] {
-        songs.filter { selected.contains($0.id) }.map(\.id)
+        Playlist.orderedSelection(selected: selected, existingOrder: initialOrder, librarySongs: songs)
     }
 
     var body: some View {
@@ -44,7 +68,7 @@ struct NewPlaylistSheet: View {
     // MARK: 顶部：名字 + 搜索
     private var header: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("playlists.new.title")
+            Text(titleKey)
                 .font(.headline)
 
             HStack(spacing: 8) {

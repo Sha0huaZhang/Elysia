@@ -18,6 +18,8 @@ struct ContentView: View {
     @State private var selectedItem: SidebarItem? = .songs
     /// 当前打开的 Elysia 歌单；nil 表示停在歌单列表
     @State private var openedPlaylist: Playlist? = nil
+    /// 歌单详情页是否正在编辑歌曲
+    @State private var isEditingSongs = false
     /// 侧边栏搜索框的文字
     @State private var searchText = ""
 
@@ -224,9 +226,47 @@ struct ContentView: View {
                 .foregroundColor(.primary)
 
             Spacer()
+
+            Button { isEditingSongs = true } label: {
+                HStack(spacing: 4) {
+                    Text("playlists.edit").foregroundColor(.blue)
+                    Text("⌘E").foregroundColor(Color.blue.opacity(0.55))
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 3)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.blue, lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut("e", modifiers: .command)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
+        .sheet(isPresented: $isEditingSongs) { editSongsSheet }
+    }
+
+    /// 编辑歌曲：与新建歌单同一个窗口，只是名字与已有曲目都已经填好。
+    @ViewBuilder
+    private var editSongsSheet: some View {
+        if let playlist = openedPlaylist {
+            PlaylistSheet(
+                titleKey: "playlists.edit.title",
+                songs: songs,
+                initialName: playlist.name,
+                initialOrder: playlist.songIDs,
+                nameExists: { PlaylistStore().contains(name: $0, excluding: playlist.id) },
+                onConfirm: { name, songIDs in
+                    isEditingSongs = false
+                    guard let updated = PlaylistStore().update(id: playlist.id, name: name, songIDs: songIDs) else { return }
+                    Diagnostics.log("编辑歌单《\(updated.name)》，共 \(songIDs.count) 首")
+                    // 详情页读的是这份值拷贝，改完要换掉，否则界面还显示旧的曲目
+                    openedPlaylist = updated
+                },
+                onCancel: { isEditingSongs = false }
+            )
+        }
     }
 
     /// 播放控制条。两个页面共用，保证操作与样式一致。
