@@ -32,6 +32,7 @@
 		D47E33A1E86BB6A1CD7AD2E2 /* PlaylistsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CA77F9D1311984A9BCAE4A3 /* PlaylistsView.swift */; };
 		EB5FA17C967C53A1C3DD9E81 /* ComingSoonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81BE71E0D701C7FADDF2CBDA /* ComingSoonView.swift */; };
 		F4B64DA47184F93B7D2C9801 /* MediaKeys.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B2A7E5A10306C7BCB1D28C8 /* MediaKeys.swift */; };
+		F547D81D873C00B60F3CF688 /* RowRangeSelect.swift in Sources */ = {isa = PBXBuildFile; fileRef = C16849A537B404A705351981 /* RowRangeSelect.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -60,6 +61,7 @@
 		B0F90AE30B61A5EA27E51A9E /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		B645E8EAC09769793F3C71C1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B64795FDA612B173C0FC681D /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		C16849A537B404A705351981 /* RowRangeSelect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RowRangeSelect.swift; sourceTree = "<group>"; };
 		E41EFAAD4F3E3C0C26348536 /* NetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitor.swift; sourceTree = "<group>"; };
 		F17B0A2E22A738FA40E07275 /* Diagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Diagnostics.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -84,6 +86,7 @@
 				120190F24BA1932F3ECAD7A9 /* PlaylistSheet.swift */,
 				2CA77F9D1311984A9BCAE4A3 /* PlaylistsView.swift */,
 				8A5465E72AF49B2E67186358 /* PositionSync.swift */,
+				C16849A537B404A705351981 /* RowRangeSelect.swift */,
 				B64795FDA612B173C0FC681D /* SettingsView.swift */,
 				82042435909503373FD81B3B /* SidebarView.swift */,
 				5BA0C54EBC4DF4AF2AC64211 /* SongAdvance.swift */,
@@ -197,6 +200,7 @@
 				D1717E61031A3AAE20882414 /* PlaylistSheet.swift in Sources */,
 				D47E33A1E86BB6A1CD7AD2E2 /* PlaylistsView.swift in Sources */,
 				3C5F2EC1987CAC641D1A7D49 /* PositionSync.swift in Sources */,
+				F547D81D873C00B60F3CF688 /* RowRangeSelect.swift in Sources */,
 				B00E267D6A675A48B94E1AFB /* SettingsView.swift in Sources */,
 				CE2F9A9B3941F9706C319C76 /* SidebarView.swift in Sources */,
 				3580F9DC045B034F18DB2FAB /* SongAdvance.swift in Sources */,

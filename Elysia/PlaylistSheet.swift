@@ -23,6 +23,12 @@ struct PlaylistSheet: View {
     @State private var selected: Set<String>
     /// 用户在没有名称时按过「确认」，据此提示需要填名字
     @State private var didAttemptWithoutName = false
+    /// 各行的全局位置，用来把「指针拖到哪」换算成第几行
+    @State private var rowFrames: [String: CGRect] = [:]
+    /// 开始拖选那一刻已有的选中项，每次重新计算范围都以它为基准
+    @State private var selectionBeforeDrag: Set<String>? = nil
+    /// 拖选起点所在的行，拖动过程中不变
+    @State private var dragAnchorIndex: Int? = nil
 
     init(
         titleKey: LocalizedStringKey,
@@ -149,10 +155,15 @@ struct PlaylistSheet: View {
                 PlaylistPickRow(
                     song: song,
                     isSelected: selected.contains(song.id),
-                    onToggle: { toggle(song.id) }
+                    onToggle: { toggle(song.id) },
+                    onDragAcross: { startY, currentY in
+                        extendSelection(startY: startY, currentY: currentY)
+                    },
+                    onDragEnded: endRangeSelection
                 )
             }
             .listStyle(.plain)
+            .onPreferenceChange(PickRowFramesKey.self) { rowFrames = $0 }
         }
     }
 
@@ -232,6 +243,34 @@ struct PlaylistSheet: View {
         }
     }
 
+    // MARK: 按住拖动、一次选中一片
+
+    /// 把起点行到当前指针行之间的行都选上。
+    ///
+    /// 每次都从「拖动开始时的选中项」重新算，而不是在现有选中项上累加：这样往回拖时
+    /// 范围会跟着缩小，结果只取决于拖到哪里，来回晃动也不会越选越多。
+    private func extendSelection(startY: CGFloat, currentY: CGFloat) {
+        let frames = visibleSongs.map { rowFrames[$0.id] }
+        guard let current = RowRangeSelect.index(atY: currentY, frames: frames) else { return }
+
+        if selectionBeforeDrag == nil {
+            selectionBeforeDrag = selected
+            dragAnchorIndex = RowRangeSelect.index(atY: startY, frames: frames)
+        }
+        guard let anchor = dragAnchorIndex else { return }
+
+        var next = selectionBeforeDrag ?? []
+        for index in RowRangeSelect.span(anchor, current) {
+            next.insert(visibleSongs[index].id)
+        }
+        if next != selected { selected = next }
+    }
+
+    private func endRangeSelection() {
+        selectionBeforeDrag = nil
+        dragAnchorIndex = nil
+    }
+
     private func confirm() {
         guard !trimmedName.isEmpty else {
             didAttemptWithoutName = true
@@ -249,6 +288,9 @@ private struct PlaylistPickRow: View {
     let song: Song
     let isSelected: Bool
     let onToggle: () -> Void
+    /// 按住拖动时回调（起点 Y、当前 Y，均为全局坐标）
+    let onDragAcross: (CGFloat, CGFloat) -> Void
+    let onDragEnded: () -> Void
 
     @State private var artworkImage: NSImage? = nil
 
@@ -290,12 +332,36 @@ private struct PlaylistPickRow: View {
         }
         .padding(.vertical, 4)
         .contentShape(Rectangle())
+        .background(
+            GeometryReader { geo in
+                Color.clear.preference(
+                    key: PickRowFramesKey.self,
+                    value: [song.id: geo.frame(in: .global)]
+                )
+            }
+        )
         .onTapGesture { onToggle() }
+        // 与单击并存：只有移动超过 3pt 才算拖选，单击仍然是切换这一行
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 3, coordinateSpace: .global)
+                .onChanged { value in
+                    onDragAcross(value.startLocation.y, value.location.y)
+                }
+                .onEnded { _ in onDragEnded() }
+        )
     }
 
     private func loadArtwork() async {
         guard artworkImage == nil else { return }
         let image = await MusicData.fetchArtwork(persistentID: song.id)
         await MainActor.run { self.artworkImage = image }
+    }
+}
+
+/// 选歌窗口里各行的全局位置，供拖选时把指针换算成行号
+private struct PickRowFramesKey: PreferenceKey {
+    static var defaultValue: [String: CGRect] = [:]
+    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
+        value.merge(nextValue()) { _, new in new }
     }
 }
