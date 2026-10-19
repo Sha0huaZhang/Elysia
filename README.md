@@ -126,7 +126,14 @@ selected, ⌘D lists the playlists so you can pick one. Every delete is confirme
 once more before it happens.
 
 **Reordering** — drag the playlists to change their order, and the songs inside
-one; a playlist's artwork always follows its first song.
+one; dragging to either end of the list scrolls it; a playlist's artwork always
+follows its first song.
+
+**Picking several at once** — in the new/edit playlist window, press on a song and
+drag up or down to take the whole run.
+
+**About** — at the bottom of the sidebar: the website, GitHub, the licence and the
+log.
 
 On first install, or after an update, if the song list is not recognized, refresh
 it in **Settings → Library**. If that still does not work, quit Apple Music and
