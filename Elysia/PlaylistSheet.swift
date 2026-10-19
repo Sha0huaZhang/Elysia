@@ -284,7 +284,7 @@ private struct PlaylistPickRow: View {
 
             Spacer()
 
-            Image(systemName: isSelected ? "circle.fill" : "circle")
+            Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                 .font(.system(size: 13))
                 .foregroundColor(isSelected ? .red : .secondary)
         }

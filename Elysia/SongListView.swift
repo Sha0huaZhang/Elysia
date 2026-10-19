@@ -24,6 +24,9 @@ struct SongListView: View {
     @State private var draggedArtwork: NSImage? = nil
     /// 各行在全局坐标系中的位置，用于计算中心线
     @State private var rowFrames: [String: CGRect] = [:]
+    /// 拖动到边缘时的自动滚动
+    @State private var autoScrollTask: Task<Void, Never>? = nil
+    @State private var autoScrollDirection = 0
 
     var body: some View {
         Group {
@@ -59,34 +62,38 @@ struct SongListView: View {
     private var songList: some View {
         GeometryReader { container in
             ZStack(alignment: .topLeading) {
-                List {
-                    ForEach(Array(songs.enumerated()), id: \.element.id) { index, song in
-                        SongRowView(
-                            song: song,
-                            isPlaying: song.id == nowPlayingID && isPlaying,
-                            isPlayable: isOnline || song.isDownloaded,
-                            isDragging: draggingID == song.id,
-                            isReorderEnabled: isReorderEnabled,
-                            onPlay: onPlay,
-                            onDragChanged: { pointerY, startY, artwork in
-                                if draggingID != song.id {
-                                    draggingID = song.id
-                                    draggedArtwork = artwork
-                                    dragGrabOffsetY = SongReorder.grabOffset(
-                                        pointerStartY: startY,
-                                        rowMinY: rowFrames[song.id]?.minY ?? startY
-                                    )
+                ScrollViewReader { proxy in
+                    List {
+                        ForEach(Array(songs.enumerated()), id: \.element.id) { index, song in
+                            SongRowView(
+                                song: song,
+                                isPlaying: song.id == nowPlayingID && isPlaying,
+                                isPlayable: isOnline || song.isDownloaded,
+                                isDragging: draggingID == song.id,
+                                isReorderEnabled: isReorderEnabled,
+                                onPlay: onPlay,
+                                onDragChanged: { pointerY, startY, artwork in
+                                    if draggingID != song.id {
+                                        draggingID = song.id
+                                        draggedArtwork = artwork
+                                        dragGrabOffsetY = SongReorder.grabOffset(
+                                            pointerStartY: startY,
+                                            rowMinY: rowFrames[song.id]?.minY ?? startY
+                                        )
+                                    }
+                                    dragPointerY = pointerY
+                                    updateAutoScroll(pointerY: pointerY, container: container, proxy: proxy)
+                                },
+                                onDragEnded: { pointerY, startY in
+                                    stopAutoScroll()
+                                    finishDrag(of: song, index: index, translation: pointerY - startY)
                                 }
-                                dragPointerY = pointerY
-                            },
-                            onDragEnded: { pointerY, startY in
-                                finishDrag(of: song, index: index, translation: pointerY - startY)
-                            }
-                        )
+                            )
+                        }
                     }
+                    .listStyle(.plain)
+                    .onPreferenceChange(RowFrameKey.self) { rowFrames = $0 }
                 }
-                .listStyle(.plain)
-                .onPreferenceChange(RowFrameKey.self) { rowFrames = $0 }
 
                 if let id = draggingID, let frame = rowFrames[id],
                    let song = songs.first(where: { $0.id == id }),
@@ -104,6 +111,53 @@ struct SongListView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+    }
+
+    // MARK: 拖动到边缘时自动滚动
+
+    /// 指针进入上下边缘带就开始滚动，离开则停下。方向不变时不重启，避免反复建任务。
+    private func updateAutoScroll(
+        pointerY: CGFloat,
+        container: GeometryProxy,
+        proxy: ScrollViewProxy
+    ) {
+        let rect = container.frame(in: .global)
+        let direction = EdgeScroll.direction(pointerY: pointerY, container: rect)
+        guard direction != 0 else {
+            stopAutoScroll()
+            return
+        }
+        guard direction != autoScrollDirection else { return }
+        startAutoScroll(direction: direction, container: rect, proxy: proxy)
+    }
+
+    /// 每步滚一行，循环到指针离开边缘或已经到头。
+    ///
+    /// 一次滚一行而不是跳一段：行位置是由滚动的结果测出来的，跳太远会撞上还没更新的
+    /// 帧，滚动就失去节奏。80 毫秒一步接近系统自带的滚动速度。
+    private func startAutoScroll(direction: Int, container: CGRect, proxy: ScrollViewProxy) {
+        stopAutoScroll()
+        autoScrollDirection = direction
+        autoScrollTask = Task { @MainActor in
+            while !Task.isCancelled {
+                let frames = songs.map { rowFrames[$0.id] }
+                guard let index = EdgeScroll.targetRow(
+                    frames: frames, container: container, direction: direction
+                ) else { break }
+
+                withAnimation(.linear(duration: 0.08)) {
+                    proxy.scrollTo(songs[index].id, anchor: direction < 0 ? .top : .bottom)
+                }
+                try? await Task.sleep(nanoseconds: 80_000_000)
+            }
+            autoScrollDirection = 0
+        }
+    }
+
+    private func stopAutoScroll() {
+        autoScrollTask?.cancel()
+        autoScrollTask = nil
+        autoScrollDirection = 0
     }
 
     /// 落点对应的插槽：按拖动卡片的中心线判断

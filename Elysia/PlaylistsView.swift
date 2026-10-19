@@ -534,7 +534,7 @@ private struct PlaylistPickRow: View {
     var body: some View {
         PlaylistRowContent(playlist: playlist, songs: songs)
             .overlay(alignment: .trailing) {
-                Image(systemName: isSelected ? "circle.fill" : "circle")
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 13))
                     .foregroundColor(isSelected ? .red : .secondary)
             }

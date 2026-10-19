@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0C1E268D1EAB5AD3D9FE5CD0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B645E8EAC09769793F3C71C1 /* Assets.xcassets */; };
+		1F5CFAB27EAE58972081DC10 /* EdgeScroll.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C0AA7C5734B8053801AC3BB /* EdgeScroll.swift */; };
 		291BE9367DA5A31563CFAC95 /* SongSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DBF8BDB0BD18BC704604D82 /* SongSearch.swift */; };
 		33E850361581264BC9A6D6DD /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E41EFAAD4F3E3C0C26348536 /* NetworkMonitor.swift */; };
 		34C29CA88FB61E30E4F5BAF8 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 56A89D34AD629A2E4D567A8D /* Localizable.strings */; };
@@ -15,6 +16,7 @@
 		3AEFE0BA18EDAB3945B0C592 /* SongOrder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CE4BC4FDDF7FD5A622A844D /* SongOrder.swift */; };
 		3C5F2EC1987CAC641D1A7D49 /* PositionSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A5465E72AF49B2E67186358 /* PositionSync.swift */; };
 		4D175465B26E2FB7D9B63341 /* Playlist.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F723B27D1EFBD676D7281E3 /* Playlist.swift */; };
+		57C5AA989B1CDEED8E5BAB7F /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0F90AE30B61A5EA27E51A9E /* AboutView.swift */; };
 		5FAC2119C7ED365E9165A84C /* Diagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = F17B0A2E22A738FA40E07275 /* Diagnostics.swift */; };
 		648FD0408A8B337A9C458C09 /* AppLanguage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D3E44E1927D19A4A5F03E9B /* AppLanguage.swift */; };
 		64EF91626727421D1E49CB1F /* VersionCheck.swift in Sources */ = {isa = PBXBuildFile; fileRef = 533501627308B6FB572A6AF7 /* VersionCheck.swift */; };
@@ -40,6 +42,7 @@
 		2E21AB5EF498774F87323DA2 /* Elysia.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Elysia.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3A30A4F8A4703F1CB9FA1863 /* MusicData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicData.swift; sourceTree = "<group>"; };
 		3B2A7E5A10306C7BCB1D28C8 /* MediaKeys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaKeys.swift; sourceTree = "<group>"; };
+		3C0AA7C5734B8053801AC3BB /* EdgeScroll.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeScroll.swift; sourceTree = "<group>"; };
 		411DDE90D74EF5F6508E935E /* PlayerControlBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerControlBar.swift; sourceTree = "<group>"; };
 		424B85B5E4C0CAAFB41C665B /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		4EFFB3A0030F2EBFC8CE58C5 /* SongListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongListView.swift; sourceTree = "<group>"; };
@@ -54,6 +57,7 @@
 		8A5FD21DDB2768015E29A941 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		8DBF8BDB0BD18BC704604D82 /* SongSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongSearch.swift; sourceTree = "<group>"; };
 		A0737928E41B180E0C8404F4 /* ElysiaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElysiaApp.swift; sourceTree = "<group>"; };
+		B0F90AE30B61A5EA27E51A9E /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		B645E8EAC09769793F3C71C1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B64795FDA612B173C0FC681D /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		E41EFAAD4F3E3C0C26348536 /* NetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitor.swift; sourceTree = "<group>"; };
@@ -64,11 +68,13 @@
 		0577FBA509DC9CEA8A841F87 /* Elysia */ = {
 			isa = PBXGroup;
 			children = (
+				B0F90AE30B61A5EA27E51A9E /* AboutView.swift */,
 				1D3E44E1927D19A4A5F03E9B /* AppLanguage.swift */,
 				B645E8EAC09769793F3C71C1 /* Assets.xcassets */,
 				81BE71E0D701C7FADDF2CBDA /* ComingSoonView.swift */,
 				424B85B5E4C0CAAFB41C665B /* ContentView.swift */,
 				F17B0A2E22A738FA40E07275 /* Diagnostics.swift */,
+				3C0AA7C5734B8053801AC3BB /* EdgeScroll.swift */,
 				A0737928E41B180E0C8404F4 /* ElysiaApp.swift */,
 				3B2A7E5A10306C7BCB1D28C8 /* MediaKeys.swift */,
 				3A30A4F8A4703F1CB9FA1863 /* MusicData.swift */,
@@ -176,10 +182,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				57C5AA989B1CDEED8E5BAB7F /* AboutView.swift in Sources */,
 				648FD0408A8B337A9C458C09 /* AppLanguage.swift in Sources */,
 				EB5FA17C967C53A1C3DD9E81 /* ComingSoonView.swift in Sources */,
 				7E1E6C0D1E049DB31C89185E /* ContentView.swift in Sources */,
 				5FAC2119C7ED365E9165A84C /* Diagnostics.swift in Sources */,
+				1F5CFAB27EAE58972081DC10 /* EdgeScroll.swift in Sources */,
 				97FE602EB92671F7F0D52D96 /* ElysiaApp.swift in Sources */,
 				F4B64DA47184F93B7D2C9801 /* MediaKeys.swift in Sources */,
 				6AC52737ACC0005FC103DA26 /* MusicData.swift in Sources */,

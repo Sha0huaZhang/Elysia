@@ -163,6 +163,8 @@ struct ContentView: View {
             }
         case .albums, .start:
             ComingSoonView(item: selectedItem ?? .songs)
+        case .about:
+            AboutView()
         }
     }
 

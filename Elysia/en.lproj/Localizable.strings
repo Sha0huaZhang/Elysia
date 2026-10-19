@@ -51,6 +51,18 @@
 "playlists.delete.pickHint"        = "Select a playlist above first.";
 "playlists.delete.confirm.message" = "“%@” will be deleted. Playlists live in Elysia only, so this cannot be undone.";
 
+/* About */
+"sidebar.about"                   = "About";
+"settings.about"                  = "About";
+"settings.about.tagline"          = "The missing graphical interface of Apple Music";
+"settings.about.description"      = "A lightweight front end for Apple Music on macOS. Elysia does not play audio itself: it drives the Music app, so your library, playlists and playback state stay exactly where they are.";
+"settings.about.version"          = "Version";
+"settings.about.website"          = "Website";
+"settings.about.github"           = "GitHub";
+"settings.about.license"          = "MIT License";
+"settings.about.openLog"          = "Open Log";
+"settings.about.copyright"        = "© 2026 Sha0huaZhang";
+
 /* Settings — language */
 /* Language names stay in their own language (endonyms), as macOS does:
    a Chinese reader looks for "简体中文" whatever the current UI language is. */
