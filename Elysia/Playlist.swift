@@ -121,7 +121,7 @@ struct PlaylistStore {
     /// 新建歌单。名字为空、或与已有歌单同名时返回 nil，调用方据此提示。
     func create(name: String, songIDs: [String]) -> Playlist? {
         // 存的是去掉首尾空白后的原名，不做大小写转换——用户输入的 "UTF-8" 就该是 "UTF-8"
-        let stored = Self.trimmed(name)
+        let stored = Self.normalized(name)
         guard !stored.isEmpty, !contains(name: stored) else { return nil }
 
         var list = all
@@ -154,7 +154,7 @@ struct PlaylistStore {
     /// 名字为空、或与**别的**歌单同名时返回 nil。编辑时要把正在编辑的这个排除在重名
     /// 检查之外，否则不改名也会被判成与自己重名。
     func update(id: UUID, name: String, songIDs: [String]) -> Playlist? {
-        let stored = Self.trimmed(name)
+        let stored = Self.normalized(name)
         guard !stored.isEmpty, !contains(name: stored, excluding: id) else { return nil }
 
         var list = all
@@ -175,14 +175,62 @@ struct PlaylistStore {
         return all.contains { $0.id != id && Self.comparisonKey($0.name) == target }
     }
 
-    /// 去掉首尾空白
-    private static func trimmed(_ name: String) -> String {
-        name.trimmingCharacters(in: .whitespacesAndNewlines)
+    /// 去掉首尾空白，并截到上限长度。
+    ///
+    /// 写入口径只有这一处：新建、改名、重名比较都经过它，界面上限制过的长度与存下来
+    /// 的长度因此不会各说各话。
+    private static func normalized(_ name: String) -> String {
+        LibraryLimits.normalized(name, limit: LibraryLimits.playlistName)
     }
 
     /// 比较用的键：去掉首尾空白并忽略大小写
     private static func comparisonKey(_ name: String) -> String {
-        trimmed(name).lowercased()
+        normalized(name).lowercased()
+    }
+
+    /// 把历史遗留的超长歌单名截短并写回，返回改动的个数。
+    ///
+    /// 以前的版本对名字长度没有任何限制，粘几万个字符就能把主线程的排版占满。这里在
+    /// 启动时、任何界面显示名字之前先收短，老用户打开新版本即恢复正常。
+    ///
+    /// 截短后可能和别的歌单撞名（两个超长名字只有末尾不同）。列表里并不禁止重名，
+    /// 但别处都不允许建重名，这里补一个序号，免得留下两个看起来一样的歌单。
+    @discardableResult
+    func shortenOverlongNames() -> Int {
+        let list = all
+        var used: Set<String> = []
+        var result: [Playlist] = []
+        result.reserveCapacity(list.count)
+        var changed = 0
+
+        for var playlist in list {
+            let original = playlist.name
+            var shortened = Self.normalized(original)
+
+            // 只收短超长的名字：本来就合规矩的名字保持原样，不因为重名去改用户的歌单名。
+            // 截短后可能和前面出现过的名字撞上，那就补个序号。
+            if !shortened.isEmpty, shortened != original {
+                var suffix = 2
+                while used.contains(Self.comparisonKey(shortened)) {
+                    shortened = Self.suffixed(Self.normalized(original), suffix: suffix)
+                    suffix += 1
+                }
+                playlist.name = shortened
+                changed += 1
+            }
+            if !shortened.isEmpty { used.insert(Self.comparisonKey(shortened)) }
+            result.append(playlist)
+        }
+
+        if changed > 0 { save(result) }
+        return changed
+    }
+
+    /// 在名字后面接上「 (n)」，整体仍不超过上限
+    private static func suffixed(_ name: String, suffix: Int) -> String {
+        let tag = " (\(suffix))"
+        let room = max(0, LibraryLimits.playlistName - tag.count)
+        return String(name.prefix(room)) + tag
     }
 
     private func save(_ list: [Playlist]) {

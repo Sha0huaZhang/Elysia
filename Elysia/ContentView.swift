@@ -95,6 +95,11 @@ struct ContentView: View {
         // 首次安装或更新后提示一次使用须知
         .onAppear {
             isShowingWelcome = promptedVersion != AppVersion.current
+            // 旧版本不限名字长度，先把历史遗留的超长歌单名收短再显示，免得排版卡住
+            let shortened = PlaylistStore().shortenOverlongNames()
+            if shortened > 0 {
+                Diagnostics.log("已缩短 \(shortened) 个超长歌单名")
+            }
         }
         .alert("welcome.title", isPresented: $isShowingWelcome) {
             Button("common.gotIt") {
@@ -228,6 +233,9 @@ struct ContentView: View {
             Text(openedPlaylist?.name ?? "")
                 .font(.title3)
                 .foregroundColor(.primary)
+                // 名字再长也只占一行：否则详情页顶部会被撑开，按钮被挤走
+                .lineLimit(1)
+                .truncationMode(.tail)
 
             Spacer()
 

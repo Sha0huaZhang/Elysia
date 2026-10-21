@@ -219,9 +219,14 @@ struct SongDragCard: View {
                 Text(song.title)
                     .font(.body)
                     .fontWeight(.semibold)
+                    // 单行截断：标签里出现超长标题时，行高不会被撑成几屏
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                 Text(song.artist)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
             }
 
             Spacer(minLength: 0)
@@ -301,9 +306,13 @@ struct SongRowView: View {
                     .font(.body)
                     .fontWeight(isPlaying ? .bold : .regular)
                     .foregroundColor(isPlaying ? .red : (isPlayable ? .primary : .secondary))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                 Text(song.artist)
                     .font(.caption)
                     .foregroundColor(isPlayable ? .secondary : Color.secondary.opacity(0.6))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
             }
 
             Spacer()

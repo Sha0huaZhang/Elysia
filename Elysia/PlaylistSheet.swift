@@ -82,6 +82,13 @@ struct PlaylistSheet: View {
                     .foregroundColor(.secondary)
                 TextField("playlists.name.placeholder", text: $name)
                     .textFieldStyle(.roundedBorder)
+                    // 粘贴几万个字符时只保留上限内的内容：否则主线程要先排一次几万字符的
+                    // 文字，界面直接卡住
+                    .onChange(of: name) { newValue in
+                        if newValue.count > LibraryLimits.playlistName {
+                            name = String(newValue.prefix(LibraryLimits.playlistName))
+                        }
+                    }
             }
 
             if isDuplicate {

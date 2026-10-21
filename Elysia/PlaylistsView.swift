@@ -38,6 +38,12 @@ struct PlaylistsView: View {
         .sheet(item: $editing) { playlist in editSheet(playlist) }
         .alert(renameTitle, isPresented: isRenaming) {
             TextField("playlists.name.placeholder", text: $renameText)
+                // 与建歌单的输入框同一条上限，粘贴超长文本只保留上限内的内容
+                .onChange(of: renameText) { newValue in
+                    if newValue.count > LibraryLimits.playlistName {
+                        renameText = String(newValue.prefix(LibraryLimits.playlistName))
+                    }
+                }
             Button("common.cancel", role: .cancel) { renaming = nil }
             Button("playlists.confirm") { commitRename() }
         } message: {
@@ -470,6 +476,9 @@ private struct PlaylistRowContent: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(playlist.name)
                     .font(.body)
+                    // 单行截断：即使数据里已经有超长名字，也不会把侧栏排版拖慢
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                 Text(songCountText(songs.count))
                     .font(.caption)
                     .foregroundColor(.secondary)
