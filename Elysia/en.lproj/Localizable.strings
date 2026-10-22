@@ -70,6 +70,7 @@
 "albums.rename.changed"     = "%d changed";
 "albums.rename.required"    = "Names cannot be empty";
 "albums.hide"               = "Hide";
+"albums.toPlaylist"         = "New Playlist";
 "albums.hidden"             = "Hidden Albums";
 "albums.hiddenCount"        = "Hidden Albums (%d)";
 "albums.restore"            = "Restore";

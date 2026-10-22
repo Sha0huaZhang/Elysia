@@ -131,6 +131,24 @@ struct PlaylistStore {
         return playlist
     }
 
+    /// 新建歌单，名字已被占用时自动接上序号。
+    ///
+    /// 供「转为歌单」这类由程序起名的地方用：专辑名常常和已有歌单重名，直接 create 会
+    /// 失败，而用户要的是「转换成功」，不是「先去改个名字」。序号从 2 开始，整体仍受
+    /// 名字长度上限约束。
+    func createUnique(name: String, songIDs: [String]) -> Playlist? {
+        let base = Self.normalized(name)
+        guard !base.isEmpty else { return nil }
+
+        var candidate = base
+        var suffix = 2
+        while contains(name: candidate) {
+            candidate = Self.suffixed(base, suffix: suffix)
+            suffix += 1
+        }
+        return create(name: candidate, songIDs: songIDs)
+    }
+
     func delete(id: UUID) {
         save(all.filter { $0.id != id })
     }

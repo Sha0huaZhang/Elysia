@@ -20,6 +20,8 @@ struct AlbumsView: View {
     let onHide: ([String]) -> Void
     let onRestore: ([String]) -> Void
     let onRestoreAll: () -> Void
+    /// 转为歌单：每张专辑生成一个同名歌单
+    let onConvert: ([Album]) -> Void
 
     /// 浏览时高亮的那一行
     @State private var highlighted: String? = nil
@@ -50,6 +52,23 @@ struct AlbumsView: View {
             content
         }
         .onChange(of: showingHidden) { _ in endSelecting() }
+        // 浏览模式下的快捷键。选择模式里由工具条上的同名按钮接管，这里让开，免得同键两处。
+        .background {
+            Group {
+                Button { renameHighlighted() } label: { EmptyView() }
+                    .keyboardShortcut("r", modifiers: .command)
+                Button { hideOrRestoreHighlighted() } label: { EmptyView() }
+                    .keyboardShortcut("i", modifiers: .command)
+                Button { convertHighlighted() } label: { EmptyView() }
+                    .keyboardShortcut("n", modifiers: [.command, .shift])
+            }
+            .opacity(0)
+            // opacity(0) 只是看不见，按钮仍会挡住下面的点击，必须真的关掉命中测试
+            .allowsHitTesting(false)
+            // 选择模式与「屏蔽的专辑」里由工具条按钮接管；改名窗口开着时也不该让它们去动列表
+            .disabled(isSelecting || !renaming.isEmpty || showingHidden)
+            .accessibilityHidden(true)
+        }
         .sheet(isPresented: isRenaming) {
             AlbumRenameSheet(albums: renaming) { changes in
                 renaming = []
@@ -78,7 +97,7 @@ struct AlbumsView: View {
 
             if showingHidden {
                 if isSelecting {
-                    button("albums.restoreSelected", shortcut: "⌘R", color: .blue) {
+                    button("albums.restoreSelected", shortcut: "⌘I", color: .blue) {
                         guard !selection.isEmpty else { return }
                         onRestore(Array(selection))
                         endSelecting()
@@ -103,7 +122,13 @@ struct AlbumsView: View {
                         renaming = selectedAlbums
                     }
                     spacerCharacter()
-                    button("albums.hide", shortcut: "⌘⌫", color: .red) {
+                    button("albums.toPlaylist", shortcut: "⌘⇧N", color: .blue) {
+                        guard !selection.isEmpty else { return }
+                        onConvert(selectedAlbums)
+                        endSelecting()
+                    }
+                    spacerCharacter()
+                    button("albums.hide", shortcut: "⌘I", color: .red) {
                         guard !selection.isEmpty else { return }
                         onHide(Array(selection))
                         endSelecting()
@@ -228,13 +253,21 @@ struct AlbumsView: View {
                                 Diagnostics.log("恢复专辑《\(album.title)》")
                                 onRestore([album.id])
                             }
+                            .keyboardShortcut("i", modifiers: .command)
                         } else {
                             Button("albums.rename") { renaming = [album] }
+                                .keyboardShortcut("r", modifiers: .command)
+                            Button("albums.toPlaylist") {
+                                Diagnostics.log("专辑转歌单《\(album.title)》，\(album.songs.count) 首")
+                                onConvert([album])
+                            }
+                            .keyboardShortcut("n", modifiers: [.command, .shift])
                             Divider()
                             Button("albums.hide", role: .destructive) {
                                 Diagnostics.log("屏蔽专辑《\(album.title)》")
                                 onHide([album.id])
                             }
+                            .keyboardShortcut("i", modifiers: .command)
                         }
                     }
                 }
@@ -287,6 +320,47 @@ struct AlbumsView: View {
         }
     }
 
+    /// 浏览模式下被选中（高亮）的那张专辑
+    private var highlightedAlbum: Album? {
+        guard let highlighted else { return nil }
+        return listedAlbums.first { $0.id == highlighted }
+    }
+
+    /// ⌘R：重命名高亮的专辑。没有选中就什么都不做——改哪一张必须由用户指定。
+    private func renameHighlighted() {
+        guard let album = highlightedAlbum else {
+            Diagnostics.log("未选中专辑，重命名已忽略")
+            return
+        }
+        renaming = [album]
+    }
+
+    /// ⌘⇧N：把高亮的专辑转成歌单
+    private func convertHighlighted() {
+        guard let album = highlightedAlbum else {
+            Diagnostics.log("未选中专辑，转为歌单已忽略")
+            return
+        }
+        Diagnostics.log("专辑转歌单《\(album.title)》，\(album.songs.count) 首")
+        onConvert([album])
+    }
+
+    /// ⌘I：屏蔽高亮的专辑；在「屏蔽的专辑」里则是恢复它。
+    private func hideOrRestoreHighlighted() {
+        guard let album = highlightedAlbum else {
+            Diagnostics.log("未选中专辑，\(showingHidden ? "恢复" : "屏蔽")已忽略")
+            return
+        }
+        if showingHidden {
+            Diagnostics.log("恢复专辑《\(album.title)》")
+            onRestore([album.id])
+        } else {
+            Diagnostics.log("屏蔽专辑《\(album.title)》")
+            onHide([album.id])
+            highlighted = nil
+        }
+    }
+
     private func countFormat(_ key: String) -> String {
         Bundle.main.localizedString(forKey: key, value: nil, table: nil)
     }
@@ -305,8 +379,10 @@ private struct OptionalShortcut: ViewModifier {
             content.keyboardShortcut("r", modifiers: .command)
         case "⌘B":
             content.keyboardShortcut("b", modifiers: .command)
-        case "⌘⌫":
-            content.keyboardShortcut(.delete, modifiers: .command)
+        case "⌘I":
+            content.keyboardShortcut("i", modifiers: .command)
+        case "⌘⇧N":
+            content.keyboardShortcut("n", modifiers: [.command, .shift])
         default:
             content
         }

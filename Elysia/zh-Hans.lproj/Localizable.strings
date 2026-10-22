@@ -69,6 +69,7 @@
 "albums.rename.changed"     = "已改动 %d 张";
 "albums.rename.required"    = "名字不能为空";
 "albums.hide"               = "屏蔽";
+"albums.toPlaylist"         = "转为歌单";
 "albums.hidden"             = "屏蔽的专辑";
 "albums.hiddenCount"        = "屏蔽的专辑 (%d)";
 "albums.restore"            = "恢复";

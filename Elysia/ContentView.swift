@@ -186,7 +186,8 @@ struct ContentView: View {
                     onRename: renameAlbums,
                     onHide: hideAlbums,
                     onRestore: restoreAlbums,
-                    onRestoreAll: restoreAllAlbums
+                    onRestoreAll: restoreAllAlbums,
+                    onConvert: convertAlbumsToPlaylists
                 )
             }
         case .start:
@@ -348,6 +349,28 @@ struct ContentView: View {
     private func restoreAllAlbums() {
         albumSettings.showAll()
         reloadAlbums()
+    }
+
+    /// 专辑转歌单：每张专辑生成一个同名歌单，曲目与顺序都和这张专辑一致。
+    ///
+    /// 批量转换时是一张专辑一个歌单，而不是合成一个大歌单——转换该是可预期的，
+    /// 「把这三张各自变成歌单」比「把三张混成一个」更接近点按时的意图。
+    /// 名字与已有歌单重名时自动接上序号，转换不会因为重名而失败。
+    private func convertAlbumsToPlaylists(_ albums: [Album]) {
+        let store = PlaylistStore()
+        var created: [String] = []
+        for album in albums {
+            let ids = album.songs.map(\.id)
+            guard !ids.isEmpty else { continue }
+            guard let playlist = store.createUnique(name: album.title, songIDs: ids) else {
+                Diagnostics.log("专辑《\(album.title)》转歌单失败")
+                continue
+            }
+            created.append(playlist.name)
+        }
+        if !created.isEmpty {
+            Diagnostics.log("已转为歌单：\(created.map { "《\($0)》" }.joined(separator: "、"))")
+        }
     }
 
     /// 当前打开的专辑。按 ID 从最新的分组结果里取，资料库刷新后曲目跟着更新。
@@ -512,6 +535,9 @@ struct ContentView: View {
         text += "；其中 \(fetched.filter { !$0.isDownloaded }.count) 首未下载（离线时播不了）"
         if let saved = orderStore.savedIDs {
             text += "；其中 \(fetched.filter { !saved.contains($0.id) }.count) 首不在自定义顺序里，已插回资料库中的位置"
+        }
+        if !hiddenAlbumIDs.isEmpty || !albumSettings.settings.renamed.isEmpty {
+            text += "；专辑 \(albums.count) 张，其中 \(hiddenAlbumIDs.count) 张被屏蔽、\(albumSettings.settings.renamed.count) 张改过名"
         }
         if let highest = positions.last {
             let gaps = (1...highest).filter { !positions.contains($0) }
