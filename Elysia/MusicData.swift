@@ -24,6 +24,38 @@ struct Song: Identifiable, Hashable {
     /// 不用 `kind` 判断，那是本地化文字（中文系统显示「HLS媒体」，英文系统是别的），
     /// 换语言就会失效。
     let isDownloaded: Bool
+
+    /// 专辑名。资料库里没填时为空串，这类曲目不出现在「专辑」页。
+    let album: String
+
+    /// 专辑歌手；资料库里没填时为空串，此时「专辑」页退回用曲目歌手分组。
+    let albumArtist: String
+
+    /// 碟号、曲目号（1 起，0 表示读不出）。「专辑」页据此把一张专辑排成唱片上的顺序。
+    let discNumber: Int
+    let trackNumber: Int
+
+    init(
+        id: String,
+        title: String,
+        artist: String,
+        libraryPosition: Int,
+        isDownloaded: Bool,
+        album: String = "",
+        albumArtist: String = "",
+        discNumber: Int = 0,
+        trackNumber: Int = 0
+    ) {
+        self.id = id
+        self.title = title
+        self.artist = artist
+        self.libraryPosition = libraryPosition
+        self.isDownloaded = isDownloaded
+        self.album = album
+        self.albumArtist = albumArtist
+        self.discNumber = discNumber
+        self.trackNumber = trackNumber
+    }
 }
 
 // MARK: - 播放状态
@@ -129,6 +161,10 @@ enum MusicData {
     /// 位置就不依赖计数：坏条目自然留下一个空缺，并被自动跳过。
     ///
     /// 同时记下每首歌是否已下载（见 `Song.isDownloaded`），供离线时把播不了的曲目标灰。
+    ///
+    /// 还带回专辑名、专辑歌手、碟号与曲目号：`album` 与 `album artist` 用来把曲目归成
+    /// 专辑，`track number` 与 `disc number` 用来把一张专辑排成唱片上的顺序。这些属性
+    /// 都会有一首一首读的开销（1500 首约 4.6 秒），因此只在这里读一次，界面直接用结果。
     static func fetchAllSongs() -> [Song] {
         let script = """
         tell application "Music"
@@ -140,6 +176,10 @@ enum MusicData {
                 set ar to ""
                 set idx to 0
                 set dld to 0
+                set al to ""
+                set aa to ""
+                set tn to 0
+                set dn to 0
                 try
                     set pid to (persistent ID of t)
                 end try
@@ -156,7 +196,19 @@ enum MusicData {
                     set p to (location of t)
                     set dld to 1
                 end try
-                set output to output & idx & "|||" & pid & "|||" & nm & "|||" & ar & "|||" & dld & "\n"
+                try
+                    set al to (album of t)
+                end try
+                try
+                    set aa to (album artist of t)
+                end try
+                try
+                    set tn to (track number of t)
+                end try
+                try
+                    set dn to (disc number of t)
+                end try
+                set output to output & idx & "|||" & pid & "|||" & nm & "|||" & ar & "|||" & dld & "|||" & al & "|||" & aa & "|||" & tn & "|||" & dn & "\n"
             end repeat
             return output
         end tell
@@ -167,7 +219,7 @@ enum MusicData {
         var unpositioned = 0
         for line in result.split(separator: "\n") {
             let parts = line.components(separatedBy: "|||")
-            guard parts.count == 5 else { continue }
+            guard parts.count == 9 else { continue }
             // 坏条目连 persistent ID 都读不出，直接跳过（不放进列表）
             let id = parts[1].trimmingCharacters(in: .whitespaces)
             guard !id.isEmpty else { continue }
@@ -179,7 +231,11 @@ enum MusicData {
                 title: parts[2],
                 artist: parts[3],
                 libraryPosition: position,
-                isDownloaded: parts[4] == "1"
+                isDownloaded: parts[4] == "1",
+                album: parts[5],
+                albumArtist: parts[6],
+                discNumber: Int(parts[7]) ?? 0,
+                trackNumber: Int(parts[8]) ?? 0
             ))
         }
 

@@ -51,6 +51,15 @@
 "playlists.delete.pickHint"        = "Select a playlist above first.";
 "playlists.delete.confirm.message" = "“%@” will be deleted. Playlists live in Elysia only, so this cannot be undone.";
 
+/* Albums */
+"albums.back"        = "Albums";
+"albums.open"        = "Open Album";
+"albums.songCount"   = "%d songs";
+"albums.empty.title" = "No albums yet";
+"albums.empty.hint"  = "Albums come from your Apple Music library, and it has no songs yet";
+"albums.noMatch.title" = "No matching albums";
+"albums.noMatch.hint"  = "Try another search";
+
 /* About */
 "sidebar.about"                   = "About";
 "settings.about"                  = "About";

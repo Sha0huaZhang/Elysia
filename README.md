@@ -132,6 +132,13 @@ follows its first song.
 **Picking several at once** — in the new/edit playlist window, press on a song and
 drag up or down to take the whole run.
 
+**Albums** — the sidebar's **Albums** page groups your Apple Music library into
+albums, sorted by album title, each with its artwork, artist and song count.
+
+**Open an album** — double-click it, or click the arrow on its row. Its songs
+come up in disc and track order, and previous/next follow that order. Album
+data is only read; nothing in Apple Music is changed.
+
 **About** — at the bottom of the sidebar: the website, GitHub, the licence and the
 log.
 

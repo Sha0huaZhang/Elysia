@@ -18,6 +18,8 @@ struct ContentView: View {
     @State private var selectedItem: SidebarItem? = .songs
     /// 当前打开的 Elysia 歌单；nil 表示停在歌单列表
     @State private var openedPlaylist: Playlist? = nil
+    /// 当前打开的专辑（按 ID 记，资料库刷新后仍能取到最新的曲目）；nil 表示停在专辑列表
+    @State private var openedAlbumID: String? = nil
     /// 歌单详情页是否正在编辑歌曲
     @State private var isEditingSongs = false
     /// 详情页是否在确认删除这个歌单
@@ -27,6 +29,8 @@ struct ContentView: View {
 
     /// Apple Music 资料库的原始顺序，用于恢复默认排序
     @State private var librarySongs: [Song] = []
+    /// 由资料库归并出来的专辑，随「歌曲」列表一起更新
+    @State private var albums: [Album] = []
     /// 当前是否使用用户自定义排序
     @State private var isCustomOrder = false
     /// 是否正在重新读取资料库
@@ -139,9 +143,10 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             refreshLibrary()
         }
-        // 换到别的栏目时退出歌单，回来看到的是歌单列表而不是上次那个歌单
+        // 换到别的栏目时退出歌单与专辑，回来看到的是列表而不是上次进去的那个
         .onChange(of: selectedItem) { _ in
             openedPlaylist = nil
+            openedAlbumID = nil
         }
     }
 
@@ -166,7 +171,17 @@ struct ContentView: View {
             } else {
                 PlaylistsView(songs: songs, onOpen: { openedPlaylist = $0 })
             }
-        case .albums, .start:
+        case .albums:
+            if openedAlbum != nil {
+                albumDetailView
+            } else {
+                AlbumsView(
+                    songs: songs,
+                    searchText: searchText,
+                    onOpen: { openedAlbumID = $0.id }
+                )
+            }
+        case .start:
             ComingSoonView(item: selectedItem ?? .songs)
         case .about:
             AboutView()
@@ -294,6 +309,77 @@ struct ContentView: View {
         openedPlaylist = nil
     }
 
+    /// 当前打开的专辑。按 ID 从最新的分组结果里取，资料库刷新后曲目跟着更新。
+    private var openedAlbum: Album? {
+        guard let openedAlbumID else { return nil }
+        return albums.first { $0.id == openedAlbumID }
+    }
+
+    /// 进入某张专辑后的详情页。
+    ///
+    /// 与「歌单」详情页同一个控制条、同一个歌曲列表：播放、进度条、媒体键都一样，
+    /// 「上一首 / 下一首」也按这张专辑的顺序走。专辑顺序由 Apple Music 的碟号、曲目号
+    /// 决定，因此这里不提供拖动排序。
+    private var albumDetailView: some View {
+        VStack(spacing: 0) {
+            albumDetailBar
+            Divider()
+            controlBar
+            Divider()
+            songList(
+                displayed: visibleSongs,
+                isReorderEnabled: false,
+                onReorder: { _ in }
+            )
+        }
+    }
+
+    /// 专辑详情顶部：返回专辑（⌘[）+ 专辑名 + 歌手
+    private var albumDetailBar: some View {
+        HStack(spacing: 0) {
+            Button {
+                openedAlbumID = nil
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "chevron.left")
+                    Text("albums.back")
+                    Text("⌘[").foregroundColor(Color.blue.opacity(0.55))
+                }
+                .foregroundColor(.blue)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 3)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.blue, lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut("[", modifiers: .command)
+
+            // 一个文字的宽度
+            Text("字").font(.body).hidden()
+
+            Text(openedAlbum?.title ?? "")
+                .font(.title3)
+                .foregroundColor(.primary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+
+            if let artist = openedAlbum?.artist, !artist.isEmpty {
+                Text(artist)
+                    .font(.callout)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .padding(.leading, 8)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+    }
+
     private func deletePlaylistMessage(for playlist: Playlist) -> String {
         let format = Bundle.main.localizedString(
             forKey: "playlists.delete.confirm.message", value: nil, table: nil
@@ -403,6 +489,7 @@ struct ContentView: View {
         await MainActor.run {
             self.librarySongs = fetched
             self.songs = orderStore.apply(to: fetched)
+            self.albums = AlbumLibrary.albums(from: self.songs)
             self.isCustomOrder = orderStore.isCustomized
             self.isLoading = false
             self.isRefreshing = false
@@ -797,12 +884,16 @@ struct ContentView: View {
     /// 当前是否在搜索
     private var isSearching: Bool { SongSearch.isActive(searchText) }
 
-    /// 当前详情页的曲目：「歌曲」页是资料库列表，进入歌单后是这个歌单的曲目。
+    /// 当前详情页的曲目：「歌曲」页是资料库列表，进入歌单 / 专辑后是那个歌单 / 专辑的曲目。
     ///
     /// 显示、搜索、编号、以及「上一首 / 下一首」都以它为准，所以「看到的列表就是会播放
     /// 的顺序」。歌单里对不上资料库的曲目（已被删除、或读不出属性的坏条目）在这里就被
-    /// 丢掉，编号因此始终连续。
+    /// 丢掉，编号因此始终连续。专辑的曲目也按 ID 从当前资料库里取，标题、下载状态跟着刷新。
     private var activeSongs: [Song] {
+        if let album = openedAlbum {
+            let index = Song.index(songs)
+            return album.songs.compactMap { index[$0.id] }
+        }
         guard let playlist = openedPlaylist else { return songs }
         return playlist.resolvedSongs(in: Song.index(songs))
     }
@@ -815,6 +906,7 @@ struct ContentView: View {
     /// 拖动排序后保存新的顺序
     private func persistOrder(_ ordered: [Song]) {
         songs = ordered
+        albums = AlbumLibrary.albums(from: ordered)
         orderStore.save(ordered)
         isCustomOrder = true
     }
@@ -835,6 +927,7 @@ struct ContentView: View {
     private func resetOrder() {
         orderStore.reset()
         songs = librarySongs
+        albums = AlbumLibrary.albums(from: librarySongs)
         isCustomOrder = false
     }
 }
