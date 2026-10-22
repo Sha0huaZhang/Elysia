@@ -76,6 +76,8 @@
 "albums.restoreAll"         = "全部恢复";
 "albums.hidden.empty.title" = "没有被屏蔽的专辑";
 "albums.hidden.empty.hint"  = "在「专辑」里右键或选择多张后可以屏蔽它们";
+"albums.allHidden.title"    = "专辑都被屏蔽了";
+"albums.allHidden.hint"     = "点右上角的「屏蔽的专辑」可以把它们放回来";
 
 /* 关于 */
 "sidebar.about"                   = "关于";

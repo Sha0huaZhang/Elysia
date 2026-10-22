@@ -258,16 +258,24 @@ struct AlbumsView: View {
 
     private var emptyIcon: String {
         if isSearching { return "magnifyingglass" }
+        if allHidden { return "eye.slash" }
         return showingHidden ? "eye.slash" : "square.stack"
+    }
+
+    /// 可见的专辑全被屏蔽了：空状态要说清楚去哪里找回来，而不是「还没有专辑」
+    private var allHidden: Bool {
+        !showingHidden && !isSearching && visibleAlbums.isEmpty && !hiddenIDs.isEmpty
     }
 
     private var emptyTitle: LocalizedStringKey {
         if isSearching { return "albums.noMatch.title" }
+        if allHidden { return "albums.allHidden.title" }
         return showingHidden ? "albums.hidden.empty.title" : "albums.empty.title"
     }
 
     private var emptyHint: LocalizedStringKey {
         if isSearching { return "albums.noMatch.hint" }
+        if allHidden { return "albums.allHidden.hint" }
         return showingHidden ? "albums.hidden.empty.hint" : "albums.empty.hint"
     }
 

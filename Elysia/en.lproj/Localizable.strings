@@ -77,6 +77,8 @@
 "albums.restoreAll"         = "Restore All";
 "albums.hidden.empty.title" = "No hidden albums";
 "albums.hidden.empty.hint"  = "Right-click an album, or select several, to hide them";
+"albums.allHidden.title"    = "Every album is hidden";
+"albums.allHidden.hint"     = "Use Hidden Albums at the top right to bring them back";
 
 /* About */
 "sidebar.about"                   = "About";
