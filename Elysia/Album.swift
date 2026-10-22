@@ -7,8 +7,14 @@ import Foundation
 // 所以资料库里删掉的曲目会自动消失，不会留下空行。
 struct Album: Identifiable, Hashable {
     /// 专辑名与专辑歌手的组合。两组精选集同名不同歌手时不会被并成一张。
+    ///
+    /// 始终按 Apple Music 里的原名计算，因此在 Elysia 里改名之后，仍然认得是哪一张，
+    /// 改名也不会把两张专辑并到一起或者拆开。
     let id: String
+    /// 显示用的名字：用户在 Elysia 里改过就用改过的，否则就是原名
     let title: String
+    /// Apple Music 里的原名
+    let originalTitle: String
     /// 专辑歌手；资料库里没填时退回曲目歌手
     let artist: String
     /// 专辑内的曲目，已按碟号、曲目号排好
@@ -21,7 +27,8 @@ enum AlbumLibrary {
     ///
     /// 专辑名为空的曲目不进「专辑」页——它们在资料库里本来就没有归属，
     /// 硬凑成一张「未知专辑」只会把列表撑长；这些曲目在「歌曲」页仍然都在。
-    static func albums(from songs: [Song]) -> [Album] {
+    /// `renamed` 是用户在 Elysia 里改过的专辑名（key 是专辑 id），只影响显示。
+    static func albums(from songs: [Song], renamed: [String: String] = [:]) -> [Album] {
         var groups: [String: (title: String, artist: String, songs: [(order: Int, song: Song)])] = [:]
 
         for (order, song) in songs.enumerated() {
@@ -34,7 +41,13 @@ enum AlbumLibrary {
         }
 
         return groups.map { key, group in
-            Album(id: key, title: group.title, artist: group.artist, songs: ordered(group.songs))
+            Album(
+                id: key,
+                title: displayTitle(for: key, original: group.title, renamed: renamed),
+                originalTitle: group.title,
+                artist: group.artist,
+                songs: ordered(group.songs)
+            )
         }
         .sorted { a, b in
             let byTitle = a.title.localizedStandardCompare(b.title)
@@ -56,6 +69,13 @@ enum AlbumLibrary {
                     || album.artist.localizedStandardContains(term)
             }
         }
+    }
+
+    /// 显示名：改过就用改过的；空白覆盖当作没改（旧数据或手工改坏时仍能显示原名）
+    private static func displayTitle(for id: String, original: String, renamed: [String: String]) -> String {
+        guard let override = renamed[id] else { return original }
+        let trimmed = override.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? original : trimmed
     }
 
     /// 专辑的歌手：优先专辑歌手，没填时用曲目歌手

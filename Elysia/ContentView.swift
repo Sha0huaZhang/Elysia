@@ -29,8 +29,10 @@ struct ContentView: View {
 
     /// Apple Music 资料库的原始顺序，用于恢复默认排序
     @State private var librarySongs: [Song] = []
-    /// 由资料库归并出来的专辑，随「歌曲」列表一起更新
+    /// 由资料库归并出来的专辑（含被屏蔽的），随「歌曲」列表一起更新
     @State private var albums: [Album] = []
+    /// 被屏蔽的专辑 id：不出现在「专辑」页，歌曲仍在「歌曲」页
+    @State private var hiddenAlbumIDs: Set<String> = []
     /// 当前是否使用用户自定义排序
     @State private var isCustomOrder = false
     /// 是否正在重新读取资料库
@@ -39,6 +41,7 @@ struct ContentView: View {
     @State private var lastRefreshed: Date? = nil
 
     private let orderStore = SongOrderStore()
+    private let albumSettings = AlbumSettingsStore()
 
     @State private var position: Double = 0
     @State private var duration: Double = 0
@@ -176,9 +179,14 @@ struct ContentView: View {
                 albumDetailView
             } else {
                 AlbumsView(
-                    songs: songs,
+                    albums: albums,
+                    hiddenIDs: hiddenAlbumIDs,
                     searchText: searchText,
-                    onOpen: { openedAlbumID = $0.id }
+                    onOpen: { openedAlbumID = $0.id },
+                    onRename: renameAlbums,
+                    onHide: hideAlbums,
+                    onRestore: restoreAlbums,
+                    onRestoreAll: restoreAllAlbums
                 )
             }
         case .start:
@@ -307,6 +315,39 @@ struct ContentView: View {
         PlaylistStore().delete(id: playlist.id)
         Diagnostics.log("删除歌单《\(playlist.name)》")
         openedPlaylist = nil
+    }
+
+    /// 重新归并专辑：套用 Elysia 里的改名，并记下哪些被屏蔽。
+    ///
+    /// 专辑列表与详情的名字、屏蔽状态都来自这一处，改完名或屏蔽之后调用它即可。
+    private func reloadAlbums() {
+        let settings = albumSettings.settings
+        albums = AlbumLibrary.albums(from: songs, renamed: settings.renamed)
+        hiddenAlbumIDs = Set(settings.hidden)
+        // 正在看的专辑可能刚被屏蔽或已从资料库里消失，此时退回列表
+        if let openedAlbumID, albums.first(where: { $0.id == openedAlbumID }).map({ hiddenAlbumIDs.contains($0.id) }) ?? true {
+            self.openedAlbumID = nil
+        }
+    }
+
+    private func renameAlbums(_ changes: [(id: String, original: String, name: String)]) {
+        albumSettings.rename(changes)
+        reloadAlbums()
+    }
+
+    private func hideAlbums(_ ids: [String]) {
+        albumSettings.hide(ids)
+        reloadAlbums()
+    }
+
+    private func restoreAlbums(_ ids: [String]) {
+        albumSettings.show(ids)
+        reloadAlbums()
+    }
+
+    private func restoreAllAlbums() {
+        albumSettings.showAll()
+        reloadAlbums()
     }
 
     /// 当前打开的专辑。按 ID 从最新的分组结果里取，资料库刷新后曲目跟着更新。
@@ -487,9 +528,17 @@ struct ContentView: View {
             MusicData.fetchAllSongs()
         }.value
         await MainActor.run {
+            // 没读成（Music 正忙等）：保留原来的列表，否则界面会突然空掉，
+            // 正在播的歌也对不上。下一次刷新（切回 Elysia 时）会再试。
+            guard let fetched else {
+                Diagnostics.log("这次没读到资料库，保留原列表（\(self.songs.count) 首）")
+                self.isLoading = false
+                self.isRefreshing = false
+                return
+            }
             self.librarySongs = fetched
             self.songs = orderStore.apply(to: fetched)
-            self.albums = AlbumLibrary.albums(from: self.songs)
+            self.reloadAlbums()
             self.isCustomOrder = orderStore.isCustomized
             self.isLoading = false
             self.isRefreshing = false
@@ -906,7 +955,7 @@ struct ContentView: View {
     /// 拖动排序后保存新的顺序
     private func persistOrder(_ ordered: [Song]) {
         songs = ordered
-        albums = AlbumLibrary.albums(from: ordered)
+        reloadAlbums()
         orderStore.save(ordered)
         isCustomOrder = true
     }
@@ -927,7 +976,7 @@ struct ContentView: View {
     private func resetOrder() {
         orderStore.reset()
         songs = librarySongs
-        albums = AlbumLibrary.albums(from: librarySongs)
+        reloadAlbums()
         isCustomOrder = false
     }
 }

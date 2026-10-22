@@ -60,6 +60,23 @@
 "albums.empty.hint"  = "Albums come from your Apple Music library, and it has no songs yet";
 "albums.noMatch.title" = "No matching albums";
 "albums.noMatch.hint"  = "Try another search";
+"albums.select"             = "Select";
+"albums.select.done"        = "Done";
+"albums.selectedCount"      = "%d selected";
+"albums.rename"             = "Rename";
+"albums.rename.title"       = "Rename Albums";
+"albums.rename.hint"        = "Each field holds the current name; edit the ones you want. Blank or unchanged names are left alone. Names change in Elysia only; Apple Music is untouched.";
+"albums.rename.placeholder" = "Album name";
+"albums.rename.changed"     = "%d changed";
+"albums.rename.required"    = "Names cannot be empty";
+"albums.hide"               = "Hide";
+"albums.hidden"             = "Hidden Albums";
+"albums.hiddenCount"        = "Hidden Albums (%d)";
+"albums.restore"            = "Restore";
+"albums.restoreSelected"    = "Restore Selected";
+"albums.restoreAll"         = "Restore All";
+"albums.hidden.empty.title" = "No hidden albums";
+"albums.hidden.empty.hint"  = "Right-click an album, or select several, to hide them";
 
 /* About */
 "sidebar.about"                   = "About";

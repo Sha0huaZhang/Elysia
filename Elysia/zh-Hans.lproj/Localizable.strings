@@ -59,6 +59,23 @@
 "albums.empty.hint"  = "专辑来自 Apple Music 的资料库，资料库里还没有曲目";
 "albums.noMatch.title" = "没有找到匹配的专辑";
 "albums.noMatch.hint"  = "换个关键词试试";
+"albums.select"             = "选择";
+"albums.select.done"        = "完成";
+"albums.selectedCount"      = "已选 %d 张";
+"albums.rename"             = "重命名";
+"albums.rename.title"       = "重命名专辑";
+"albums.rename.hint"        = "下面的输入框里是现在的名字，改成想要的即可；留空或保持原名都不会改动。名字只改在 Elysia 里，Apple Music 不受影响。";
+"albums.rename.placeholder" = "专辑名";
+"albums.rename.changed"     = "已改动 %d 张";
+"albums.rename.required"    = "名字不能为空";
+"albums.hide"               = "屏蔽";
+"albums.hidden"             = "屏蔽的专辑";
+"albums.hiddenCount"        = "屏蔽的专辑 (%d)";
+"albums.restore"            = "恢复";
+"albums.restoreSelected"    = "恢复所选";
+"albums.restoreAll"         = "全部恢复";
+"albums.hidden.empty.title" = "没有被屏蔽的专辑";
+"albums.hidden.empty.hint"  = "在「专辑」里右键或选择多张后可以屏蔽它们";
 
 /* 关于 */
 "sidebar.about"                   = "关于";

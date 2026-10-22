@@ -139,6 +139,14 @@ albums, sorted by album title, each with its artwork, artist and song count.
 come up in disc and track order, and previous/next follow that order. Album
 data is only read; nothing in Apple Music is changed.
 
+**Rename or hide an album** — right-click it. Both are kept inside Elysia: the
+album name in Apple Music stays as it is, and hiding only takes the album
+off this page — its songs stay under **songs**.
+
+**Batch ⌘B** — press **Select** at the top right, tick several albums, then
+rename them together (one field per album) or hide them. **Hidden Albums**
+restores one, several or all of them.
+
 **About** — at the bottom of the sidebar: the website, GitHub, the licence and the
 log.
 

@@ -165,7 +165,11 @@ enum MusicData {
     /// 还带回专辑名、专辑歌手、碟号与曲目号：`album` 与 `album artist` 用来把曲目归成
     /// 专辑，`track number` 与 `disc number` 用来把一张专辑排成唱片上的顺序。这些属性
     /// 都会有一首一首读的开销（1500 首约 4.6 秒），因此只在这里读一次，界面直接用结果。
-    static func fetchAllSongs() -> [Song] {
+    ///
+    /// 返回 nil 表示这一次没读成：脚本出错（Apple Music 正忙、正在导入歌曲时都可能发生）
+    /// 同样得不到任何输出，调用方据此保留原来的列表，而不是把界面清空。资料库确实是空的
+    /// 时才返回空数组。
+    static func fetchAllSongs() -> [Song]? {
         let script = """
         tell application "Music"
             set songList to every track of library playlist 1
@@ -215,6 +219,19 @@ enum MusicData {
         """
 
         let result = runAppleScriptSync(script)
+        if result.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            // 输出为空有两种可能：资料库真的是空的，或者这一次脚本没跑成。
+            // 问一句曲目数就能分清，只有确实是空的才返回空数组。
+            let count = runAppleScriptSync("""
+            tell application "Music" to return (count of tracks of library playlist 1)
+            """).trimmingCharacters(in: .whitespacesAndNewlines)
+            if (Int(count) ?? 0) > 0 {
+                Diagnostics.log("读取资料库失败（Music 返回空列表，实际有 \(count) 首），保留原列表")
+                return nil
+            }
+            return []
+        }
+
         var songs: [Song] = []
         var unpositioned = 0
         for line in result.split(separator: "\n") {

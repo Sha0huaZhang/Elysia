@@ -11,6 +11,7 @@ import Foundation
 // emoji 与中文不会被切成半个。
 enum LibraryLimits {
     static let playlistName = 100
+    static let albumName = 100
 
     /// 去掉首尾空白，并截到最多 `limit` 个字符。
     static func normalized(_ value: String, limit: Int) -> String {
