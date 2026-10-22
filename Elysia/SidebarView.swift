@@ -58,6 +58,10 @@ struct SidebarView: View {
         .navigationSplitViewColumnWidth(min: 150, ideal: 180, max: 220)
     }
 
+    private var searchPlaceholder: LocalizedStringKey {
+        selection == .albums ? "search.placeholder.albums" : "search.placeholder"
+    }
+
     /// 列表上方的搜索框
     private var searchField: some View {
         HStack(spacing: 6) {
@@ -65,7 +69,8 @@ struct SidebarView: View {
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
 
-            TextField("search.placeholder", text: $searchText)
+            // 提示随栏目变：专辑页搜的是专辑名与歌手，不是歌曲
+            TextField(searchPlaceholder, text: $searchText)
                 .textFieldStyle(.plain)
                 .font(.system(size: 12))
                 .onExitCommand { searchText = "" }

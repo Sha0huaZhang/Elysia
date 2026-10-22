@@ -14,6 +14,7 @@
 
 /* 搜索 */
 "search.placeholder" = "搜索歌曲";
+"search.placeholder.albums" = "搜索专辑";
 "search.clear"       = "清除搜索";
 
 /* 正在播放 */

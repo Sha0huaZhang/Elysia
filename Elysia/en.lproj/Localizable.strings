@@ -15,6 +15,7 @@
 
 /* Search */
 "search.placeholder" = "Search songs";
+"search.placeholder.albums" = "Search albums";
 "search.clear"       = "Clear search";
 
 /* Now playing */
