@@ -58,14 +58,15 @@ enum Diagnostics {
     /// 因此不必再用眼睛数界面上是第几行；也便于事后核对 Elysia 的顺序与 Apple Music 的
     /// 顺序差在哪一首。每次读取资料库（启动、切回应用、手动刷新）都会重写一次。
     static func dumpList(_ songs: [Song]) {
-        var text = "# Elysia 列表清单　共 \(songs.count) 首\n"
-        text += "# 位置就是 Apple Music 资料库中的位置\n"
-        text += "# 位置\t歌名\t歌手\tpersistent ID\n"
-        for song in songs {
-            let position = song.libraryPosition > 0 ? String(song.libraryPosition) : "未知"
-            text += "\(position)\t\(song.title)\t\(song.artist)\t\(song.id)\n"
-        }
+        // 拼接放在后台队列里做：几千首的清单有一两百 KB，没必要占用主线程
         queue.async {
+            var text = "# Elysia 列表清单　共 \(songs.count) 首\n"
+            text += "# 位置就是 Apple Music 资料库中的位置\n"
+            text += "# 位置\t歌名\t歌手\tpersistent ID\n"
+            for song in songs {
+                let position = song.libraryPosition > 0 ? String(song.libraryPosition) : "未知"
+                text += "\(position)\t\(song.title)\t\(song.artist)\t\(song.id)\n"
+            }
             try? text.data(using: .utf8)?.write(to: listURL)
         }
     }

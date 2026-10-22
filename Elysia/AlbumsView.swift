@@ -32,6 +32,8 @@ struct AlbumsView: View {
     @State private var showingHidden = false
     /// 正在改名的专辑（空数组表示不显示改名窗口）
     @State private var renaming: [Album] = []
+    /// 封面预取任务：滚动时不断重排，只保留最后一次
+    @State private var prefetchTask: Task<Void, Never>? = nil
 
     private var visibleAlbums: [Album] {
         AlbumLibrary.filter(albums.filter { !hiddenIDs.contains($0.id) }, query: searchText)
@@ -231,7 +233,7 @@ struct AlbumsView: View {
             .listStyle(.plain)
         } else {
             List(selection: $highlighted) {
-                ForEach(listedAlbums) { album in
+                ForEach(Array(listedAlbums.enumerated()), id: \.element.id) { index, album in
                     AlbumRow(
                         album: album,
                         onOpen: {
@@ -247,6 +249,8 @@ struct AlbumsView: View {
                         onSelect: { highlighted = album.id }
                     )
                     .tag(album.id)
+                    // 滚到这张专辑附近：先把它前后各 20 张的低分辨率封面取回来
+                    .onAppear { prefetchAround(index) }
                     .contextMenu {
                         if showingHidden {
                             Button("albums.restore") {
@@ -310,6 +314,28 @@ struct AlbumsView: View {
         if isSearching { return "albums.noMatch.hint" }
         if allHidden { return "albums.allHidden.hint" }
         return showingHidden ? "albums.hidden.empty.hint" : "albums.empty.hint"
+    }
+
+    /// 预取相邻专辑的封面。
+    ///
+    /// 专辑列表本身就是平铺的，一屏只有十几行，取前后各 20 张就足够滑过去时不露灰底。
+    /// 取的是低分辨率（64 像素），空闲时 `MusicData` 会自己换成清晰版。
+    private func prefetchAround(_ index: Int) {
+        let lower = max(0, index - 20)
+        let upper = min(listedAlbums.count - 1, index + 20)
+        guard lower <= upper else { return }
+
+        let songs = (lower...upper)
+            .sorted { abs($0 - index) < abs($1 - index) }
+            .flatMap { listedAlbums[$0].songs.prefix(1) }
+        guard !songs.isEmpty else { return }
+
+        prefetchTask?.cancel()
+        prefetchTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            guard !Task.isCancelled else { return }
+            await MusicData.prefetchAlbumCovers(songs)
+        }
     }
 
     private func toggle(_ id: String) {
@@ -485,7 +511,10 @@ struct AlbumArtwork: View {
                 artworkImage = nil
                 return
             }
-            artworkImage = await MusicData.fetchArtwork(persistentID: first.id)
+            // 与歌曲列表共用缓存：进过专辑页再回歌曲页，封面是现成的
+            let image = await MusicData.artwork(for: first.artworkKey, persistentID: first.id)
+            guard !Task.isCancelled else { return }
+            artworkImage = image
         }
     }
 }

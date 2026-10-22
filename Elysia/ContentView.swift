@@ -146,6 +146,7 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             refreshLibrary()
         }
+
         // 换到别的栏目时退出歌单与专辑，回来看到的是列表而不是上次进去的那个
         .onChange(of: selectedItem) { _ in
             openedPlaylist = nil
@@ -529,9 +530,10 @@ struct ContentView: View {
 
     /// 把这次读库的结果写进日志：曲目数、位置范围、按自定义顺序补位的新歌、
     /// 以及被自动跳过的坏条目（表现为位置空缺）。
-    private func logLibraryRead(_ fetched: [Song]) {
+    private func logLibraryRead(_ fetched: [Song], seconds: TimeInterval) {
         let positions = fetched.map(\.libraryPosition).filter { $0 > 0 }.sorted()
         var text = "读取资料库 \(fetched.count) 首，位置 \(positions.first ?? 0)..\(positions.last ?? 0)"
+        text += String(format: "，用时 %.2f 秒", seconds)
         text += "；其中 \(fetched.filter { !$0.isDownloaded }.count) 首未下载（离线时播不了）"
         if let saved = orderStore.savedIDs {
             text += "；其中 \(fetched.filter { !saved.contains($0.id) }.count) 首不在自定义顺序里，已插回资料库中的位置"
@@ -540,7 +542,8 @@ struct ContentView: View {
             text += "；专辑 \(albums.count) 张，其中 \(hiddenAlbumIDs.count) 张被屏蔽、\(albumSettings.settings.renamed.count) 张改过名"
         }
         if let highest = positions.last {
-            let gaps = (1...highest).filter { !positions.contains($0) }
+            let present = Set(positions)
+            let gaps = (1...highest).filter { !present.contains($0) }
             if !gaps.isEmpty {
                 text += "；位置 \(gaps.map(String.init).joined(separator: "、")) 的条目在资料库里读不出来，已自动跳过"
             }
@@ -550,9 +553,11 @@ struct ContentView: View {
 
     /// 从 Apple Music 读取资料库，并套用已保存的顺序
     private func loadSongs() async {
+        let started = Date()
         let fetched = await Task.detached(priority: .userInitiated) {
             MusicData.fetchAllSongs()
         }.value
+        let readSeconds = Date().timeIntervalSince(started)
         await MainActor.run {
             // 没读成（Music 正忙等）：保留原来的列表，否则界面会突然空掉，
             // 正在播的歌也对不上。下一次刷新（切回 Elysia 时）会再试。
@@ -570,7 +575,7 @@ struct ContentView: View {
             self.isRefreshing = false
             self.lastRefreshed = Date()
             Diagnostics.dumpList(self.songs)
-            self.logLibraryRead(fetched)
+            self.logLibraryRead(fetched, seconds: readSeconds)
         }
     }
 

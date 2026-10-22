@@ -2,6 +2,10 @@ import SwiftUI
 
 @main
 struct ElysiaApp: App {
+    init() {
+        MusicData.configureArtworkCache()
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()

@@ -23,7 +23,13 @@ struct SongListView: View {
     /// 拖动中卡片的封面
     @State private var draggedArtwork: NSImage? = nil
     /// 各行在全局坐标系中的位置，用于计算中心线
-    @State private var rowFrames: [String: CGRect] = [:]
+    ///
+    /// 用引用类型而不是 @State 的字典：滚动时每一帧都会更新它，走 @State 就等于
+    /// 每一帧都把整个列表重新渲染一遍——一千多首时滑动会明显发滞。
+    @State private var rowFrames = RowFrames()
+    /// 封面预取：最近出现过的行，以及正在跑的预取任务。
+    /// 同样用引用类型——滚动时每一步都在变，走 @State 会不停重绘。
+    @State private var prefetch = PrefetchState()
     /// 拖动到边缘时的自动滚动
     @State private var autoScrollTask: Task<Void, Never>? = nil
     @State private var autoScrollDirection = 0
@@ -63,7 +69,11 @@ struct SongListView: View {
         GeometryReader { container in
             ZStack(alignment: .topLeading) {
                 ScrollViewReader { proxy in
-                    List {
+                    // 用 ScrollView + LazyVStack 而不是 List：LazyVStack 真正只创建看得见
+                    // 的那几行，List 在 macOS 上会把上千行一起排版——一千七百多首时，
+                    // 每次滚动都要重排整张列表，CPU 直接打满、界面几乎是冻住的。
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
                         ForEach(Array(songs.enumerated()), id: \.element.id) { index, song in
                             SongRowView(
                                 song: song,
@@ -78,7 +88,7 @@ struct SongListView: View {
                                         draggedArtwork = artwork
                                         dragGrabOffsetY = SongReorder.grabOffset(
                                             pointerStartY: startY,
-                                            rowMinY: rowFrames[song.id]?.minY ?? startY
+                                            rowMinY: rowFrames.values[song.id]?.minY ?? startY
                                         )
                                     }
                                     dragPointerY = pointerY
@@ -86,16 +96,23 @@ struct SongListView: View {
                                 },
                                 onDragEnded: { pointerY, startY in
                                     stopAutoScroll()
-                                    finishDrag(of: song, index: index, translation: pointerY - startY)
+                                    finishDrag(of: song, translation: pointerY - startY)
                                 }
                             )
+                            .id(song.id)
+                            .padding(.horizontal, 12)
+                            // 这一行进入过可视区：按它的位置安排封面预取
+                            .onAppear { noteVisible(index) }
+
+                            Divider().opacity(0.45)
                         }
+                        }
+                        .padding(.vertical, 2)
                     }
-                    .listStyle(.plain)
-                    .onPreferenceChange(RowFrameKey.self) { rowFrames = $0 }
+                    .onPreferenceChange(RowFrameKey.self) { rowFrames.values = $0 }
                 }
 
-                if let id = draggingID, let frame = rowFrames[id],
+                if let id = draggingID, let frame = rowFrames.values[id],
                    let song = songs.first(where: { $0.id == id }),
                    let pointerY = dragPointerY, let grabOffset = dragGrabOffsetY {
                     SongDragCard(song: song, artwork: draggedArtwork)
@@ -140,7 +157,7 @@ struct SongListView: View {
         autoScrollDirection = direction
         autoScrollTask = Task { @MainActor in
             while !Task.isCancelled {
-                let frames = songs.map { rowFrames[$0.id] }
+                let frames = songs.map { rowFrames.values[$0.id] }
                 guard let index = EdgeScroll.targetRow(
                     frames: frames, container: container, direction: direction
                 ) else { break }
@@ -151,6 +168,22 @@ struct SongListView: View {
                 try? await Task.sleep(nanoseconds: 80_000_000)
             }
             autoScrollDirection = 0
+        }
+    }
+
+    /// 某一行进入可视区：记下位置，稍后为它上下各 100 首预取封面。
+    ///
+    /// 等 300 毫秒再动手：滚动中行会一个接一个出现，每出现一行就发一批查询毫无意义，
+    /// 停下来之后按最终停住的位置取一次就够了。窗口是上下各 100 首，共 200 首，
+    /// 相当于可视区上下各四五屏，快速拖动时也不会看到灰底。
+    private func noteVisible(_ index: Int) {
+        prefetch.lastIndex = index
+        prefetch.task?.cancel()
+        prefetch.task = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            guard !Task.isCancelled, let centre = prefetch.lastIndex else { return }
+
+            await MusicData.prefetchArtwork(for: songs, centre: centre)
         }
     }
 
@@ -168,7 +201,7 @@ struct SongListView: View {
         return SongReorder.slot(forDraggedCentreY: centreY, rowCentres: centres)
     }
 
-    private func finishDrag(of song: Song, index: Int, translation: CGFloat) {
+    private func finishDrag(of song: Song, translation: CGFloat) {
         defer {
             draggingID = nil
             dragGrabOffsetY = nil
@@ -176,7 +209,8 @@ struct SongListView: View {
             draggedArtwork = nil
         }
 
-        guard let frame = rowFrames[song.id] else { return }
+        guard let frame = rowFrames.values[song.id],
+              let index = songs.firstIndex(where: { $0.id == song.id }) else { return }
         let slot = targetSlot(for: translation, frame: frame, index: index)
         let reordered = SongReorder.moving(song.id, toSlot: slot, in: songs)
         guard reordered != songs else { return }
@@ -185,6 +219,17 @@ struct SongListView: View {
             onReorder(reordered)
         }
     }
+}
+
+/// 各行的位置。故意用引用类型：更新它不该触发视图重绘（见 `SongListView.rowFrames`）。
+final class RowFrames {
+    var values: [String: CGRect] = [:]
+}
+
+/// 封面预取的状态。同样是引用类型：滚动时每一步都在更新，不能触发重绘。
+final class PrefetchState {
+    var task: Task<Void, Never>?
+    var lastIndex: Int?
 }
 
 /// 报告单行在列表坐标系中的位置
@@ -341,11 +386,7 @@ struct SongRowView: View {
             }
         )
         .opacity(isDragging ? 0.25 : 1)
-        .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
-                isHovering = hovering
-            }
-        }
+        .onHover { isHovering = $0 }
         .onTapGesture(count: 2) {
             Diagnostics.log("双击行：\(song.positionText) 《\(song.title)》")
             onPlay(song.id)
@@ -362,7 +403,8 @@ struct SongRowView: View {
 
     private func loadArtwork() async {
         guard artworkImage == nil else { return }
-        let image = await MusicData.fetchArtwork(persistentID: song.id)
+        let image = await MusicData.artwork(for: song.artworkKey, persistentID: song.id)
+        guard !Task.isCancelled else { return }
         await MainActor.run {
             self.artworkImage = image
         }

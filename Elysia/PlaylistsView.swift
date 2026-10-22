@@ -496,7 +496,8 @@ private struct PlaylistRowContent: View {
             await MainActor.run { artworkImage = nil }
             return
         }
-        let image = await MusicData.fetchArtwork(persistentID: first.id)
+        let image = await MusicData.artwork(for: first.artworkKey, persistentID: first.id)
+        guard !Task.isCancelled else { return }
         await MainActor.run { self.artworkImage = image }
     }
 }
