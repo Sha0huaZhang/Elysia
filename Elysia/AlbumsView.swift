@@ -542,3 +542,4 @@ private func songCountText(_ count: Int) -> String {
     let format = Bundle.main.localizedString(forKey: "albums.songCount", value: nil, table: nil)
     return String(format: format, count)
 }
+

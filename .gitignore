@@ -34,3 +34,6 @@ dmg/
 # Private Files
 *.docx
 *.pdf
+
+# 本地备份（不提交）
+backup/

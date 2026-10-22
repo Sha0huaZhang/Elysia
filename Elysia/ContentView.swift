@@ -170,15 +170,19 @@ struct ContentView: View {
         case .songs, nil:
             playerView
         case .playlists:
-            if openedPlaylist != nil {
-                playlistDetailView
-            } else {
+            // 列表**常驻**（只是隐藏），进入歌单时不销毁它。
+            // 这样退出歌单时滚动位置由系统自己保留，是像素级的，不需要任何偏移计算。
+            ZStack {
                 PlaylistsView(songs: songs, onOpen: { openedPlaylist = $0 })
+                    .opacity(openedPlaylist == nil ? 1 : 0)
+                    .allowsHitTesting(openedPlaylist == nil)
+                if openedPlaylist != nil {
+                    playlistDetailView
+                }
             }
         case .albums:
-            if openedAlbum != nil {
-                albumDetailView
-            } else {
+            // 与歌单一处同理：专辑列表常驻，退出专辑时滚动位置天然保持
+            ZStack {
                 AlbumsView(
                     albums: albums,
                     hiddenIDs: hiddenAlbumIDs,
@@ -190,6 +194,12 @@ struct ContentView: View {
                     onRestoreAll: restoreAllAlbums,
                     onConvert: convertAlbumsToPlaylists
                 )
+                .opacity(openedAlbum == nil ? 1 : 0)
+                .allowsHitTesting(openedAlbum == nil)
+
+                if openedAlbum != nil {
+                    albumDetailView
+                }
             }
         case .start:
             ComingSoonView(item: selectedItem ?? .songs)
