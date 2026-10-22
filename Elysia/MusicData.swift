@@ -233,14 +233,13 @@ enum MusicData {
             return nil
         }
 
-        // 各列长度理应相同；万一不等，按最短的一列对齐，宁少几首也不错位
-        let counts = Set(columns.map(\.count))
-        if counts.count > 1 {
-            Diagnostics.log("读取资料库时各属性数量不一致 \(columns.map(\.count))，按 \(counts.min() ?? 0) 首对齐")
+        // 前八列一一对应同一批曲目，长度理应相同；万一不等，按最短的一列对齐，宁少几首
+        // 也不错位。第九列是「哪些曲目有本地文件」，本来就只有一部分，不参与比对。
+        let trackColumns = columns.prefix(8).map(\.count)
+        let n = trackColumns.min() ?? 0
+        if Set(trackColumns).count > 1 {
+            Diagnostics.log("读取资料库时各属性数量不一致 \(trackColumns)，按 \(n) 首对齐")
         }
-        // 下载状态那一列与曲目列长度不同（本来就只有一部分曲目有本地文件），
-        // 所以只对前八列要求对齐
-        let n = columns.prefix(8).map(\.count).min() ?? 0
         guard n > 0 else { return [] }
 
         let (names, artists, albums, albumArtists, tracks, discs, ids, indexes) = (

@@ -551,8 +551,12 @@ struct ContentView: View {
         Diagnostics.log(text)
     }
 
-    /// 从 Apple Music 读取资料库，并套用已保存的顺序
-    private func loadSongs() async {
+    /// 从 Apple Music 读取资料库，并套用已保存的顺序。
+    ///
+    /// 刚启动的那一次 Music 常常还没准备好，脚本会返回空列表。列表本来就是空的时候
+    /// 不能就这么算了——否则界面一片空白，只能自己切一次窗口才恢复。这里自动重试
+    /// 几次，间隔逐次拉长。
+    private func loadSongs(attempt: Int = 1) async {
         let started = Date()
         let fetched = await Task.detached(priority: .userInitiated) {
             MusicData.fetchAllSongs()
@@ -562,6 +566,16 @@ struct ContentView: View {
             // 没读成（Music 正忙等）：保留原来的列表，否则界面会突然空掉，
             // 正在播的歌也对不上。下一次刷新（切回 Elysia 时）会再试。
             guard let fetched else {
+                if self.songs.isEmpty, attempt < 4 {
+                    Diagnostics.log("这次没读到资料库，\(attempt) 秒后重试第 \(attempt + 1) 次")
+                    self.isLoading = true
+                    self.isRefreshing = false
+                    Task {
+                        try? await Task.sleep(nanoseconds: UInt64(attempt) * 1_500_000_000)
+                        await self.loadSongs(attempt: attempt + 1)
+                    }
+                    return
+                }
                 Diagnostics.log("这次没读到资料库，保留原列表（\(self.songs.count) 首）")
                 self.isLoading = false
                 self.isRefreshing = false
