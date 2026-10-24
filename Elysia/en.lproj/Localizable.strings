@@ -11,11 +11,13 @@
 "sidebar.songs"     = "Songs";
 "sidebar.playlists" = "Playlists";
 "sidebar.albums"    = "Albums";
+"sidebar.artists"   = "Artists";
 "sidebar.start"     = "Start";
 
 /* Search */
 "search.placeholder" = "Search songs";
 "search.placeholder.albums" = "Search albums";
+"search.placeholder.artists" = "Search artists";
 "search.clear"       = "Clear search";
 
 /* Now playing */
@@ -27,6 +29,29 @@
 "songs.noMatch.hint"   = "Try a different keyword";
 "songs.empty.title"    = "No songs found";
 "songs.empty.hint"     = "Make sure Apple Music is signed in and has a library";
+
+/* Artists */
+"artists.open"              = "Open Artist";
+"artists.back"              = "Artists";
+"artists.albumCount"        = "%d albums";
+"artists.songCount"         = "%d songs";
+"artists.select"            = "Select";
+"artists.select.done"       = "Done";
+"artists.selectedCount"     = "%d selected";
+"artists.hide"              = "Hide";
+"artists.unhide"            = "Unhide";
+"artists.unhideSelected"    = "Unhide Selected";
+"artists.unhideAll"         = "Unhide All";
+"artists.hidden"            = "Hidden Artists";
+"artists.hiddenCount"       = "Hidden Artists (%d)";
+"artists.empty.title"       = "No artists yet";
+"artists.empty.hint"        = "Artists come from your Apple Music library, and it has no songs yet";
+"artists.noMatch.title"     = "No matching artists";
+"artists.noMatch.hint"      = "Try another search";
+"artists.allHidden.title"   = "Every artist is hidden";
+"artists.allHidden.hint"    = "Use Hidden Artists at the top right to bring them back";
+"artists.hidden.empty.title" = "No hidden artists";
+"artists.hidden.empty.hint"  = "Right-click an artist, or select several, to hide them";
 
 /* Playlists */
 "playlists.new"                    = "New Playlist";

@@ -10,11 +10,13 @@
 "sidebar.songs"     = "歌曲";
 "sidebar.playlists" = "歌单";
 "sidebar.albums"    = "专辑";
+"sidebar.artists"   = "歌手";
 "sidebar.start"     = "开始";
 
 /* 搜索 */
 "search.placeholder" = "搜索歌曲";
 "search.placeholder.albums" = "搜索专辑";
+"search.placeholder.artists" = "搜索歌手";
 "search.clear"       = "清除搜索";
 
 /* 正在播放 */
@@ -26,6 +28,29 @@
 "songs.noMatch.hint"   = "换个关键词试试";
 "songs.empty.title"    = "没有找到歌曲";
 "songs.empty.hint"     = "请确认 Apple Music 已登录并拥有资料库";
+
+/* 歌手 */
+"artists.open"              = "进入歌手";
+"artists.back"              = "返回歌手";
+"artists.albumCount"        = "%d 张专辑";
+"artists.songCount"         = "%d 首";
+"artists.select"            = "选择";
+"artists.select.done"       = "完成";
+"artists.selectedCount"     = "已选 %d 位";
+"artists.hide"              = "屏蔽";
+"artists.unhide"            = "解除屏蔽";
+"artists.unhideSelected"    = "解除所选";
+"artists.unhideAll"         = "全部解除屏蔽";
+"artists.hidden"            = "屏蔽的歌手";
+"artists.hiddenCount"       = "屏蔽的歌手 (%d)";
+"artists.empty.title"       = "还没有歌手";
+"artists.empty.hint"        = "歌手来自 Apple Music 的资料库，资料库里还没有曲目";
+"artists.noMatch.title"     = "没有找到匹配的歌手";
+"artists.noMatch.hint"      = "换个关键词试试";
+"artists.allHidden.title"   = "歌手都被屏蔽了";
+"artists.allHidden.hint"    = "点右上角的「屏蔽的歌手」可以把他们放回来";
+"artists.hidden.empty.title" = "没有被屏蔽的歌手";
+"artists.hidden.empty.hint"  = "在「歌手」里右键或选择多位后可以屏蔽他们";
 
 /* 歌单 */
 "playlists.new"                    = "新建歌单";

@@ -20,6 +20,8 @@ struct ContentView: View {
     @State private var openedPlaylist: Playlist? = nil
     /// 当前打开的专辑（按 ID 记，资料库刷新后仍能取到最新的曲目）；nil 表示停在专辑列表
     @State private var openedAlbumID: String? = nil
+    /// 当前打开的歌手（按名字记，理由同上）；nil 表示停在歌手列表
+    @State private var openedArtistID: String? = nil
     /// 歌单详情页是否正在编辑歌曲
     @State private var isEditingSongs = false
     /// 详情页是否在确认删除这个歌单
@@ -31,8 +33,12 @@ struct ContentView: View {
     @State private var librarySongs: [Song] = []
     /// 由资料库归并出来的专辑（含被屏蔽的），随「歌曲」列表一起更新
     @State private var albums: [Album] = []
+    /// 由资料库归并出来的歌手（含被屏蔽的）
+    @State private var artists: [Artist] = []
     /// 被屏蔽的专辑 id：不出现在「专辑」页，歌曲仍在「歌曲」页
     @State private var hiddenAlbumIDs: Set<String> = []
+    /// 被屏蔽歌手的比较键：不出现在「歌手」页，歌曲仍在「歌曲」页
+    @State private var hiddenArtistKeys: Set<String> = []
     /// 当前是否使用用户自定义排序
     @State private var isCustomOrder = false
     /// 是否正在重新读取资料库
@@ -42,6 +48,7 @@ struct ContentView: View {
 
     private let orderStore = SongOrderStore()
     private let albumSettings = AlbumSettingsStore()
+    private let artistSettings = ArtistSettingsStore()
 
     @State private var position: Double = 0
     @State private var duration: Double = 0
@@ -151,6 +158,7 @@ struct ContentView: View {
         .onChange(of: selectedItem) { _ in
             openedPlaylist = nil
             openedAlbumID = nil
+            openedArtistID = nil
         }
     }
 
@@ -199,6 +207,25 @@ struct ContentView: View {
 
                 if openedAlbum != nil {
                     albumDetailView
+                }
+            }
+        case .artists:
+            // 与前两处同理：歌手列表常驻，退出歌手时滚动位置天然保持
+            ZStack {
+                ArtistsView(
+                    artists: artists,
+                    hiddenKeys: hiddenArtistKeys,
+                    searchText: searchText,
+                    onOpen: { openedArtistID = $0.id },
+                    onHide: hideArtists,
+                    onUnhide: unhideArtists,
+                    onUnhideAll: unhideAllArtists
+                )
+                .opacity(openedArtist == nil ? 1 : 0)
+                .allowsHitTesting(openedArtist == nil)
+
+                if openedArtist != nil {
+                    artistDetailView
                 }
             }
         case .start:
@@ -340,6 +367,36 @@ struct ContentView: View {
         if let openedAlbumID, albums.first(where: { $0.id == openedAlbumID }).map({ hiddenAlbumIDs.contains($0.id) }) ?? true {
             self.openedAlbumID = nil
         }
+        reloadArtists()
+    }
+
+    /// 重新归并歌手并记下屏蔽状态。
+    ///
+    /// 与专辑一样只有这一处口径：列表、详情、屏蔽状态都从它来。
+    private func reloadArtists() {
+        artists = ArtistLibrary.artists(from: songs)
+        hiddenArtistKeys = artistSettings.hiddenKeys
+        // 正在看的歌手可能刚被屏蔽或已从资料库里消失，此时退回列表
+        if let openedArtistID {
+            let stillThere = artists.contains { $0.id == openedArtistID }
+                && !hiddenArtistKeys.contains(ArtistLibrary.comparisonKey(openedArtistID))
+            if !stillThere { self.openedArtistID = nil }
+        }
+    }
+
+    private func hideArtists(_ names: [String]) {
+        artistSettings.hide(names)
+        reloadArtists()
+    }
+
+    private func unhideArtists(_ names: [String]) {
+        artistSettings.unhide(names)
+        reloadArtists()
+    }
+
+    private func unhideAllArtists() {
+        artistSettings.unhideAll()
+        reloadArtists()
     }
 
     private func renameAlbums(_ changes: [(id: String, original: String, name: String)]) {
@@ -388,6 +445,78 @@ struct ContentView: View {
     private var openedAlbum: Album? {
         guard let openedAlbumID else { return nil }
         return albums.first { $0.id == openedAlbumID }
+    }
+
+    /// 当前打开的歌手。按名字从最新的分组结果里取，资料库刷新后曲目跟着更新。
+    private var openedArtist: Artist? {
+        guard let openedArtistID else { return nil }
+        return artists.first { $0.id == openedArtistID }
+    }
+
+    /// 进入某位歌手后的详情页。
+    ///
+    /// 与专辑详情页同一个控制条、同一个歌曲列表：「上一首 / 下一首」按这位歌手的曲目
+    /// 顺序走。顺序就是资料库里的先后，因此不提供拖动排序。
+    private var artistDetailView: some View {
+        VStack(spacing: 0) {
+            artistDetailBar
+            Divider()
+            controlBar
+            Divider()
+            songList(
+                displayed: visibleSongs,
+                isReorderEnabled: false,
+                onReorder: { _ in }
+            )
+        }
+    }
+
+    /// 歌手详情顶部：返回歌手（⌘[）+ 歌手名 + 曲目数
+    private var artistDetailBar: some View {
+        HStack(spacing: 0) {
+            Button {
+                openedArtistID = nil
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "chevron.left")
+                    Text("artists.back")
+                    Text("⌘[").foregroundColor(Color.blue.opacity(0.55))
+                }
+                .foregroundColor(.blue)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 3)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.blue, lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut("[", modifiers: .command)
+
+            // 一个文字的宽度
+            Text("字").font(.body).hidden()
+
+            Text(openedArtist?.name ?? "")
+                .font(.title3)
+                .foregroundColor(.primary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+
+            if let count = openedArtist?.songs.count {
+                Text(String(format: songCountFormat, count))
+                    .font(.callout)
+                    .foregroundColor(.secondary)
+                    .padding(.leading, 8)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+    }
+
+    private var songCountFormat: String {
+        Bundle.main.localizedString(forKey: "artists.songCount", value: nil, table: nil)
     }
 
     /// 进入某张专辑后的详情页。
@@ -994,6 +1123,10 @@ struct ContentView: View {
     /// 的顺序」。歌单里对不上资料库的曲目（已被删除、或读不出属性的坏条目）在这里就被
     /// 丢掉，编号因此始终连续。专辑的曲目也按 ID 从当前资料库里取，标题、下载状态跟着刷新。
     private var activeSongs: [Song] {
+        if let artist = openedArtist {
+            let index = Song.index(songs)
+            return artist.songs.compactMap { index[$0.id] }
+        }
         if let album = openedAlbum {
             let index = Song.index(songs)
             return album.songs.compactMap { index[$0.id] }

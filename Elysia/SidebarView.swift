@@ -9,6 +9,7 @@ enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
     case songs
     case playlists
     case albums
+    case artists
     case start
     case about
 
@@ -20,6 +21,7 @@ enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
         case .songs:     return "sidebar.songs"
         case .playlists: return "sidebar.playlists"
         case .albums:    return "sidebar.albums"
+        case .artists:   return "sidebar.artists"
         case .start:     return "sidebar.start"
         case .about:     return "sidebar.about"
         }
@@ -31,6 +33,7 @@ enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
         case .songs:     return "music.note"
         case .playlists: return "music.note.list"
         case .albums:    return "square.stack"
+        case .artists:   return "music.mic"
         case .start:     return "play.circle"
         case .about:     return "info.circle"
         }
@@ -59,7 +62,11 @@ struct SidebarView: View {
     }
 
     private var searchPlaceholder: LocalizedStringKey {
-        selection == .albums ? "search.placeholder.albums" : "search.placeholder"
+        switch selection {
+        case .albums:  return "search.placeholder.albums"
+        case .artists: return "search.placeholder.artists"
+        default:       return "search.placeholder"
+        }
     }
 
     /// 列表上方的搜索框

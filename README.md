@@ -152,6 +152,16 @@ restores one, several or all of them.
 ⌘⇧N. Ticking several with ⌘B converts each into its own playlist, and a
 clashing name gets a number appended.
 
+**Artists** — the sidebar's **Artists** page groups your library by artist, sorted
+by name, each row with artwork, album count and song count.
+
+**Open an artist** — double-click or click the arrow; previous/next follow that
+artist's songs.
+
+**Hide an artist ⌘I** — right-click it, or select it and press ⌘I. The red
+**Hidden Artists** button at the top right lists them again: right-click or
+press ⌘I to unhide one, or use **Select ⌘B** to unhide several or all.
+
 **About** — at the bottom of the sidebar: the website, GitHub, the licence and the
 log.
 
